@@ -1,0 +1,112 @@
+.home-page {
+    flex: 1;
+    display: flex;
+    background: var(--bg-page);
+    position: relative;
+}
+
+.home-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+}
+
+.task-cards {
+    display: flex;
+    gap: 48px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.task-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 220px;
+    padding: 32px 20px;
+    cursor: pointer;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    transition: transform var(--transition-default), border-color var(--transition-default), box-shadow var(--transition-default), background var(--transition-default);
+}
+
+.task-card:hover {
+    transform: translateY(-4px) scale(1.015);
+    border-color: var(--accent);
+    background: var(--accent-light);
+    box-shadow: var(--shadow-md);
+}
+
+.task-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.task-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.2px;
+    text-align: center;
+}
+
+.task-icon-wrapper {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius-lg);
+    background: #ffffff;
+    transition: all var(--transition-default);
+}
+
+.task-icon-wrapper.circle {
+    border-radius: 50%;
+}
+
+.task-card:hover .task-icon-wrapper {
+    border-color: var(--accent-dark);
+    box-shadow: var(--shadow-glow);
+}
+
+.task-icon {
+    width: 62px;
+    height: 62px;
+}
+
+.power-btn {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    z-index: 50;
+}
+
+.power-btn svg {
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+}
+
+.power-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.power-btn:hover svg {
+    color: var(--accent-dark);
+}

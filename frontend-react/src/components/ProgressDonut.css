@@ -1,0 +1,82 @@
+.visual-gel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    width: 100%;
+}
+
+.donut-chart-container {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.donut-chart {
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--transition-slow);
+    position: relative;
+    box-shadow: var(--shadow-sm);
+}
+
+.donut-center {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.donut-percentage {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+.donut-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.legend-item strong {
+    color: var(--text-primary);
+}
+
+.legend-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.progress-section {
+    width: 100%;
+    max-width: 500px;
+}
+
+.progress-section h3 {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}

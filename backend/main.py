@@ -30,7 +30,7 @@ logger = logging.getLogger("server")
 
 # ─── Paths ──────────────────────────────────────────────────────────────────
 BACKEND_DIR = Path(__file__).parent
-FRONTEND_DIR = BACKEND_DIR.parent / "frontend"
+FRONTEND_DIR = BACKEND_DIR.parent / "frontend-react" / "dist"
 
 # ─── Global State ───────────────────────────────────────────────────────────
 tcp_client: Optional[RobotTCPClient] = None
@@ -282,17 +282,20 @@ async def websocket_endpoint(ws: WebSocket):
         connected_websockets.discard(ws)
 
 
-# ─── Static Files (serve frontend) ─────────────────────────────────────────
-@app.get("/")
-async def serve_index():
-    """Serve the main HTML page."""
-    return FileResponse(FRONTEND_DIR / "index.html")
-
-
-# Mount static files AFTER API routes
-app.mount("/css", StaticFiles(directory=str(FRONTEND_DIR / "css")), name="css")
-app.mount("/js", StaticFiles(directory=str(FRONTEND_DIR / "js")), name="js")
+# ─── Static Files (serve React build) ──────────────────────────────────────
+# Mount hashed build assets, then fall back to index.html for every other
+# path so React Router's client-side routes (e.g. /bolt/calibrate) resolve.
 app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
+
+
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """Serve a static build file if it exists, else fall back to the SPA
+    shell so React Router's client-side routes (e.g. /bolt/calibrate) resolve."""
+    candidate = FRONTEND_DIR / full_path
+    if full_path and candidate.is_file():
+        return FileResponse(candidate)
+    return FileResponse(FRONTEND_DIR / "index.html")
 
 
 if __name__ == "__main__":

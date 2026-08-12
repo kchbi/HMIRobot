@@ -1,0 +1,137 @@
+.main-panel-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr 1.4fr;
+    gap: 20px;
+    padding: 24px;
+    height: 100%;
+    align-content: start;
+    overflow-y: auto;
+}
+
+.panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.panel-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 18px;
+    letter-spacing: 0.2px;
+}
+
+.heading-icon {
+    font-size: 0.95rem;
+}
+
+.control-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ctrl-btn {
+    padding: 15px 18px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: 0.2px;
+    transition: all var(--transition-fast);
+    border: 1.5px solid transparent;
+}
+
+.ctrl-btn.primary {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.ctrl-btn.primary:hover:not(:disabled) {
+    background: var(--accent-dark);
+    box-shadow: var(--shadow-glow);
+}
+
+.ctrl-btn.secondary {
+    background: #ffffff;
+    color: var(--text-primary);
+    border-color: var(--border-default);
+}
+
+.ctrl-btn.secondary:hover:not(:disabled) {
+    border-color: var(--btn-dark-bg);
+    background: var(--bg-surface);
+}
+
+.ctrl-btn.danger {
+    background: var(--danger);
+    color: #ffffff;
+}
+
+.ctrl-btn.danger:hover:not(:disabled) {
+    background: #c22a3a;
+}
+
+.ctrl-btn:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.ctrl-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.visual-area {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 4px;
+}
+
+.visual-placeholder {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 1rem;
+    padding-top: 60px;
+}
+
+.visual-clean {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    width: 100%;
+}
+
+.clean-chamber-graphic {
+    width: 260px;
+    height: 260px;
+}
+
+.chamber-svg {
+    width: 100%;
+    height: 100%;
+}
+
+.progress-section {
+    width: 100%;
+    max-width: 500px;
+}
+
+.progress-section h3 {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+@media (max-width: 1100px) {
+    .main-panel-layout {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}

@@ -1,0 +1,31 @@
+.status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.status-item {
+    display: grid;
+    grid-template-columns: 14px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.status-item:last-child {
+    border-bottom: none;
+}
+
+.status-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.status-value {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+}

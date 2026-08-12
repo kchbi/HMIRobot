@@ -1,0 +1,123 @@
+.calibrate-layout {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+.cal-sidebar {
+    width: var(--sidebar-width);
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    flex-shrink: 0;
+}
+
+.cal-tab {
+    padding: 14px 20px;
+    text-align: left;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+    border-left: 3px solid transparent;
+}
+
+.cal-tab:hover {
+    color: var(--text-primary);
+    background: rgba(24, 33, 61, 0.03);
+}
+
+.cal-tab.active {
+    color: var(--text-primary);
+    background: var(--accent-light);
+    border-left-color: var(--accent);
+}
+
+.cal-content {
+    flex: 1;
+    display: flex;
+    gap: 40px;
+    padding: 24px 32px;
+    overflow-y: auto;
+}
+
+.cal-left,
+.cal-right {
+    flex: 1;
+}
+
+.cal-section {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.cal-section:last-child {
+    border-bottom: none;
+}
+
+.cal-section h3 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 12px;
+}
+
+.cal-btn-group {
+    display: flex;
+    gap: 10px;
+}
+
+.cal-btn {
+    padding: 13px 26px;
+    background: #ffffff;
+    border: 1.5px solid var(--border-default);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+    min-width: 100px;
+}
+
+.cal-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.cal-btn:active {
+    transform: scale(0.97);
+}
+
+.cal-btn.wide {
+    min-width: 140px;
+}
+
+.laser-reading {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+}
+
+.reading-label {
+    color: var(--text-muted);
+}
+
+.reading-value {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--accent-dark);
+    font-size: 1.05rem;
+}
+
+@media (max-width: 900px) {
+    .cal-content {
+        flex-direction: column;
+        gap: 24px;
+    }
+}

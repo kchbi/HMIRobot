@@ -1,0 +1,106 @@
+.app-header {
+    height: var(--header-height);
+    min-height: var(--header-height);
+    background: var(--bg-header);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    position: relative;
+    z-index: 100;
+    flex-shrink: 0;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+}
+
+.logo-btn {
+    display: flex;
+    align-items: center;
+    padding: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.logo-btn:hover {
+    opacity: 0.85;
+}
+
+.logo-image {
+    height: 34px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+}
+
+.header-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.app-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: #ffffff;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    flex: 1;
+}
+
+.connection-indicator {
+    display: flex;
+    align-items: center;
+}
+
+.dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot.connected {
+    background: var(--success);
+    box-shadow: 0 0 6px var(--success);
+    animation: pulse-green 2s infinite;
+}
+
+.dot.disconnected {
+    background: var(--danger);
+    box-shadow: 0 0 6px rgba(220, 53, 69, 0.5);
+}
+
+.hamburger-btn {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+}
+
+.hamburger-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.hamburger-btn svg {
+    width: 20px;
+    height: 20px;
+    color: #ffffff;
+}
+
+.hamburger-btn .chevron {
+    width: 13px;
+    height: 13px;
+    color: rgba(255, 255, 255, 0.6);
+}

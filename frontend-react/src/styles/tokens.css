@@ -1,0 +1,74 @@
+:root {
+    /* Colors — Industrial HMI Light Theme */
+    --bg-page: #ffffff;
+    --bg-surface: #f8fafc;
+    --bg-header: #18213d;
+    --bg-dark: #111a33;
+    --bg-elevated: #ffffff;
+    --bg-input: #ffffff;
+    --bg-track: #e9edf2;
+
+    /* Borders */
+    --border: #dbe3ea;
+    --border-subtle: #dbe3ea;
+    --border-default: #cbd5e1;
+    --border-active: #14cfc0;
+
+    /* Text */
+    --text-primary: #18213d;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --text-on-dark: #f8fafc;
+
+    /* Accent — teal */
+    --accent: #14cfc0;
+    --accent-dark: #0fae9f;
+    --accent-hover: #0fae9f;
+    --accent-light: #e6fffc;
+    --accent-dim: #e6fffc;
+    --accent-glow: rgba(20, 207, 192, 0.28);
+
+    /* Status Colors */
+    --success: #22c55e;
+    --green: #22c55e;
+    --green-dim: rgba(34, 197, 94, 0.12);
+    --warning: #f59e0b;
+    --yellow: #f59e0b;
+    --yellow-dim: rgba(245, 158, 11, 0.12);
+    --danger: #dc3545;
+    --red: #dc3545;
+    --red-dim: rgba(220, 53, 69, 0.10);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59, 130, 246, 0.12);
+
+    /* Buttons (navy pill buttons on light bg) */
+    --btn-dark-bg: #18213d;
+    --btn-dark-text: #ffffff;
+    --btn-dark-hover: #263056;
+
+    /* Sizing */
+    --header-height: 64px;
+    --tab-bar-height: 60px;
+    --sidebar-width: 150px;
+
+    /* Radius */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+    --radius-xl: 14px;
+
+    /* Shadows — restrained */
+    --shadow-sm: 0 1px 2px rgba(17, 26, 51, 0.06);
+    --shadow-md: 0 2px 8px rgba(17, 26, 51, 0.08);
+    --shadow-lg: 0 6px 20px rgba(17, 26, 51, 0.10);
+    --shadow-glow: 0 0 0 3px var(--accent-light);
+
+    /* Transitions */
+    --transition-fast: 120ms ease;
+    --transition-default: 180ms ease;
+    --transition-slow: 320ms ease;
+
+    /* Fonts */
+    --font-ui: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'Roboto Mono', 'Cascadia Code', ui-monospace, monospace;
+}
