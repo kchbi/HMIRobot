@@ -1,0 +1,470 @@
+{
+  "title": "Universal Robots Primary and Secondary Client Interface Protocol Specification",
+  "software_versions": ["5.9", "5.10"],
+  "network_ports": {
+    "primary_client": {
+      "port": 30001,
+      "description": "Robot state and messages (Read/Write, 10 Hz)"
+    },
+    "secondary_client": {
+      "port": 30002,
+      "description": "Robot state and version messages (Read/Write, 10 Hz)"
+    },
+    "primary_client_read_only": {
+      "port": 30011,
+      "description": "Robot state and messages (Read-Only, 10 Hz)"
+    },
+    "secondary_client_read_only": {
+      "port": 30012,
+      "description": "Robot state and version messages (Read-Only, 10 Hz)"
+    }
+  },
+  "endianness": "Big-Endian",
+  "data_types": {
+    "int16_t": 2,
+    "int32_t": 4,
+    "float": 4,
+    "double": 8,
+    "bool": 1,
+    "uint8_t": 1,
+    "uint16_t": 2,
+    "uint32_t": 4,
+    "uint64_t": 8
+  },
+  "overall_package_header": [
+    {"name": "messageSize", "type": "int32_t", "bytes": 4, "description": "Length of overall package including this field"},
+    {"name": "messageType", "type": "uint8_t", "bytes": 1, "description": "Robot Message Type"}
+  ],
+  "main_message_types": {
+    "16": "MESSAGE_TYPE_ROBOT_STATE",
+    "20": "MESSAGE_TYPE_ROBOT_MESSAGE",
+    "22": "MESSAGE_TYPE_HMC_MESSAGE",
+    "5": "MESSAGE_TYPE_MODBUS_INFO_MESSAGE",
+    "23": "MESSAGE_TYPE_SAFETY_SETUP_BROADCAST_MESSAGE",
+    "24": "MESSAGE_TYPE_SAFETY_COMPLIANCE_TOLERANCES_MESSAGE",
+    "25": "MESSAGE_TYPE_PROGRAM_STATE_MESSAGE",
+    "-1": "MESSAGE_TYPE_DISCONNECT"
+  },
+  "sub_package_header": [
+    {"name": "packageSize", "type": "int32_t", "bytes": 4, "description": "Total length of subpackage including this field"},
+    {"name": "packageType", "type": "uint8_t", "bytes": 1, "description": "Subpackage type identifier"}
+  ],
+  "robot_state_sub_packages": {
+    "0": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_ROBOT_MODE_DATA",
+      "fields": [
+        {"name": "timestamp", "type": "uint64_t", "bytes": 8},
+        {"name": "isRealRobotConnected", "type": "bool", "bytes": 1},
+        {"name": "isRealRobotEnabled", "type": "bool", "bytes": 1},
+        {"name": "isRobotPowerOn", "type": "bool", "bytes": 1},
+        {"name": "isEmergencyStopped", "type": "bool", "bytes": 1},
+        {"name": "isProtectiveStopped", "type": "bool", "bytes": 1},
+        {"name": "isProgramRunning", "type": "bool", "bytes": 1},
+        {"name": "isProgramPaused", "type": "bool", "bytes": 1},
+        {"name": "robotMode", "type": "uint8_t", "bytes": 1, "enum": "RobotModes"},
+        {"name": "controlMode", "type": "uint8_t", "bytes": 1, "enum": "ControlModes"},
+        {"name": "targetSpeedFraction", "type": "double", "bytes": 8},
+        {"name": "speedScaling", "type": "double", "bytes": 8},
+        {"name": "targetSpeedFractionLimit", "type": "double", "bytes": 8},
+        {"name": "reserved", "type": "uint8_t", "bytes": 1}
+      ]
+    },
+    "1": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_JOINT_DATA",
+      "array_per_joint": 6,
+      "fields_per_joint": [
+        {"name": "q_actual", "type": "double", "bytes": 8},
+        {"name": "q_target", "type": "double", "bytes": 8},
+        {"name": "qd_actual", "type": "double", "bytes": 8},
+        {"name": "I_actual", "type": "float", "bytes": 4},
+        {"name": "V_actual", "type": "float", "bytes": 4},
+        {"name": "T_motor", "type": "float", "bytes": 4},
+        {"name": "T_micro", "type": "float", "bytes": 4, "note": "Deprecated - ignore"},
+        {"name": "jointMode", "type": "uint8_t", "bytes": 1, "enum": "JointModes"}
+      ]
+    },
+    "2": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_TOOL_DATA",
+      "fields": [
+        {"name": "analogInputRange0", "type": "uint8_t", "bytes": 1},
+        {"name": "analogInputRange1", "type": "uint8_t", "bytes": 1},
+        {"name": "analogInput0", "type": "double", "bytes": 8},
+        {"name": "analogInput1", "type": "double", "bytes": 8},
+        {"name": "toolVoltage48V", "type": "float", "bytes": 4},
+        {"name": "toolOutputVoltage", "type": "uint8_t", "bytes": 1},
+        {"name": "toolCurrent", "type": "float", "bytes": 4},
+        {"name": "toolTemperature", "type": "float", "bytes": 4},
+        {"name": "toolMode", "type": "uint8_t", "bytes": 1, "enum": "ToolModes"}
+      ]
+    },
+    "3": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_MASTERBOARD_DATA",
+      "fields": [
+        {"name": "digitalInputBits", "type": "int32_t", "bytes": 4},
+        {"name": "digitalOutputBits", "type": "int32_t", "bytes": 4},
+        {"name": "analogInputRange0", "type": "uint8_t", "bytes": 1},
+        {"name": "analogInputRange1", "type": "uint8_t", "bytes": 1},
+        {"name": "analogInput0", "type": "double", "bytes": 8},
+        {"name": "analogInput1", "type": "double", "bytes": 8},
+        {"name": "analogOutputDomain0", "type": "char", "bytes": 1},
+        {"name": "analogOutputDomain1", "type": "char", "bytes": 1},
+        {"name": "analogOutput0", "type": "double", "bytes": 8},
+        {"name": "analogOutput1", "type": "double", "bytes": 8},
+        {"name": "masterBoardTemperature", "type": "float", "bytes": 4},
+        {"name": "robotVoltage48V", "type": "float", "bytes": 4},
+        {"name": "robotCurrent", "type": "float", "bytes": 4},
+        {"name": "masterIOCurrent", "type": "float", "bytes": 4},
+        {"name": "safetyMode", "type": "uint8_t", "bytes": 1, "enum": "SafetyModes"},
+        {"name": "InReducedMode", "type": "uint8_t", "bytes": 1},
+        {"name": "euromap67InterfaceInstalled", "type": "char", "bytes": 1},
+        {
+          "conditional": "if euromap67InterfaceInstalled",
+          "fields": [
+            {"name": "euromapInputBits", "type": "uint32_t", "bytes": 4},
+            {"name": "euromapOutputBits", "type": "uint32_t", "bytes": 4},
+            {"name": "euromapVoltage24V", "type": "float", "bytes": 4},
+            {"name": "euromapCurrent", "type": "float", "bytes": 4}
+          ]
+        },
+        {"name": "reserved_ur", "type": "uint32_t", "bytes": 4},
+        {"name": "operationalModeSelectorInput", "type": "uint8_t", "bytes": 1},
+        {"name": "threePositionEnablingDeviceInput", "type": "uint8_t", "bytes": 1},
+        {"name": "reserved_ur_2", "type": "uint8_t", "bytes": 1}
+      ]
+    },
+    "4": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_CARTESIAN_INFO",
+      "fields": [
+        {"name": "X", "type": "double", "bytes": 8},
+        {"name": "Y", "type": "double", "bytes": 8},
+        {"name": "Z", "type": "double", "bytes": 8},
+        {"name": "Rx", "type": "double", "bytes": 8},
+        {"name": "Ry", "type": "double", "bytes": 8},
+        {"name": "Rz", "type": "double", "bytes": 8},
+        {"name": "TCPOffsetX", "type": "double", "bytes": 8},
+        {"name": "TCPOffsetY", "type": "double", "bytes": 8},
+        {"name": "TCPOffsetZ", "type": "double", "bytes": 8},
+        {"name": "TCPOffsetRx", "type": "double", "bytes": 8},
+        {"name": "TCPOffsetRy", "type": "double", "bytes": 8},
+        {"name": "TCPOffsetRz", "type": "double", "bytes": 8}
+      ]
+    },
+    "5": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_KINEMATICS_INFO",
+      "fields": [
+        {"name": "checksum", "type": "uint32_t[6]", "bytes": 24},
+        {"name": "DHtheta", "type": "double[6]", "bytes": 48},
+        {"name": "DHa", "type": "double[6]", "bytes": 48},
+        {"name": "Dhd", "type": "double[6]", "bytes": 48},
+        {"name": "Dhalpha", "type": "double[6]", "bytes": 48},
+        {"name": "calibration_status", "type": "uint32_t", "bytes": 4}
+      ]
+    },
+    "6": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_CONFIGURATION_DATA",
+      "fields": [
+        {"name": "jointMinLimit", "type": "double[6]", "bytes": 48},
+        {"name": "jointMaxLimit", "type": "double[6]", "bytes": 48},
+        {"name": "jointMaxSpeed", "type": "double[6]", "bytes": 48},
+        {"name": "jointMaxAcceleration", "type": "double[6]", "bytes": 48},
+        {"name": "vJointDefault", "type": "double", "bytes": 8},
+        {"name": "aJointDefault", "type": "double", "bytes": 8},
+        {"name": "vToolDefault", "type": "double", "bytes": 8},
+        {"name": "aToolDefault", "type": "double", "bytes": 8},
+        {"name": "eqRadius", "type": "double", "bytes": 8},
+        {"name": "DHa", "type": "double[6]", "bytes": 48},
+        {"name": "Dhd", "type": "double[6]", "bytes": 48},
+        {"name": "DHalpha", "type": "double[6]", "bytes": 48},
+        {"name": "DHtheta", "type": "double[6]", "bytes": 48},
+        {"name": "masterboardVersion", "type": "int32_t", "bytes": 4},
+        {"name": "controllerBoxType", "type": "int32_t", "bytes": 4},
+        {"name": "robotType", "type": "int32_t", "bytes": 4},
+        {"name": "robotSubType", "type": "int32_t", "bytes": 4}
+      ]
+    },
+    "7": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_FORCE_MODE_DATA",
+      "fields": [
+        {"name": "Fx", "type": "double", "bytes": 8},
+        {"name": "Fy", "type": "double", "bytes": 8},
+        {"name": "Fz", "type": "double", "bytes": 8},
+        {"name": "Frx", "type": "double", "bytes": 8},
+        {"name": "Fry", "type": "double", "bytes": 8},
+        {"name": "Frz", "type": "double", "bytes": 8},
+        {"name": "robotDexterity", "type": "double", "bytes": 8}
+      ]
+    },
+    "8": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_ADDITIONAL_INFO",
+      "fields": [
+        {"name": "tpButtonState", "type": "uint8_t", "bytes": 1},
+        {"name": "freedriveButtonEnabled", "type": "bool", "bytes": 1},
+        {"name": "IOEnabledFreedrive", "type": "bool", "bytes": 1},
+        {"name": "reserved", "type": "uint8_t", "bytes": 1}
+      ]
+    },
+    "9": {"name": "ROBOT_STATE_PACKAGE_TYPE_NEEDED_FOR_CALIB_DATA", "note": "Internal only"},
+    "10": {"name": "ROBOT_STATE_PACKAGE_TYPE_SAFETY_DATA", "note": "Internal only"},
+    "11": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_TOOL_COMM_INFO",
+      "fields": [
+        {"name": "toolCommunicationIsEnabled", "type": "bool", "bytes": 1},
+        {"name": "baudRate", "type": "int32_t", "bytes": 4},
+        {"name": "parity", "type": "int32_t", "bytes": 4},
+        {"name": "stopBits", "type": "int32_t", "bytes": 4},
+        {"name": "RxIdleChars", "type": "float", "bytes": 4},
+        {"name": "TxIdleChars", "type": "float", "bytes": 4}
+      ]
+    },
+    "12": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_TOOL_MODE_INFO",
+      "fields": [
+        {"name": "output_mode", "type": "uint8_t", "bytes": 1},
+        {"name": "digital_output_mode_output_0", "type": "uint8_t", "bytes": 1},
+        {"name": "digital_output_mode_output_1", "type": "uint8_t", "bytes": 1}
+      ]
+    },
+    "13": {
+      "name": "ROBOT_STATE_PACKAGE_TYPE_SINGULARITY_INFO",
+      "fields": [
+        {"name": "singularitySeverity", "type": "uint8_t", "bytes": 1},
+        {"name": "singularityType", "type": "uint8_t", "bytes": 1}
+      ]
+    }
+  },
+  "robot_messages": {
+    "header": [
+      {"name": "messageSize", "type": "int32_t", "bytes": 4},
+      {"name": "messageType", "type": "uint8_t", "value": 20},
+      {"name": "timestamp", "type": "uint64_t", "bytes": 8},
+      {"name": "source", "type": "char", "bytes": 1, "enum": "MessageSources"},
+      {"name": "robotMessageType", "type": "char", "bytes": 1}
+    ],
+    "types": {
+      "0": {
+        "name": "ROBOT_MESSAGE_TYPE_TEXT",
+        "fields": [{"name": "textTextMessage", "type": "charArray"}]
+      },
+      "2": {
+        "name": "ROBOT_MESSAGE_TYPE_POPUP",
+        "fields": [
+          {"name": "requestId", "type": "uint32_t"},
+          {"name": "requestedType", "type": "uint32_t", "enum": "RequestedTypes"},
+          {"name": "warning", "type": "bool"},
+          {"name": "error", "type": "bool"},
+          {"name": "blocking", "type": "bool"},
+          {"name": "popupMessageTitleSize", "type": "uint8_t"},
+          {"name": "popupMessageTitle", "type": "charArray"},
+          {"name": "popupTextMessage", "type": "charArray"}
+        ]
+      },
+      "3": {
+        "name": "ROBOT_MESSAGE_TYPE_VERSION",
+        "note": "Sent only once upon initial TCP connection",
+        "fields": [
+          {"name": "projectNameSize", "type": "char"},
+          {"name": "projectName", "type": "charArray"},
+          {"name": "majorVersion", "type": "uint8_t"},
+          {"name": "minorVersion", "type": "uint8_t"},
+          {"name": "bugfixVersion", "type": "int32_t"},
+          {"name": "buildNumber", "type": "int32_t"},
+          {"name": "buildDate", "type": "charArray"}
+        ]
+      },
+      "5": {
+        "name": "ROBOT_MESSAGE_TYPE_SAFETY_MODE",
+        "fields": [
+          {"name": "robotMessageCode", "type": "int32_t"},
+          {"name": "robotMessageArgument", "type": "int32_t"},
+          {"name": "safetyModeType", "type": "uint8_t", "enum": "SafetyModeTypes"},
+          {"name": "reportDataType", "type": "uint32_t"},
+          {"name": "reportData", "type": "uint32_t"}
+        ]
+      },
+      "6": {
+        "name": "ROBOT_MESSAGE_TYPE_ERROR_CODE",
+        "fields": [
+          {"name": "robotMessageCode", "type": "int32_t"},
+          {"name": "robotMessageArgument", "type": "int32_t"},
+          {"name": "robotMessageReportLevel", "type": "int32_t", "enum": "ReportLevels"},
+          {"name": "robotMessageDataType", "type": "uint32_t"},
+          {"name": "robotMessageData", "type": "uint32_t"},
+          {"name": "robotCommTextMessage", "type": "charArray"}
+        ]
+      },
+      "7": {
+        "name": "ROBOT_MESSAGE_TYPE_KEY",
+        "fields": [
+          {"name": "robotMessageCode", "type": "int32_t"},
+          {"name": "robotMessageArgument", "type": "int32_t"},
+          {"name": "robotMessageTitleSize", "type": "uint8_t"},
+          {"name": "robotMessageTitle", "type": "charArray"},
+          {"name": "keyTextMessage", "type": "charArray"}
+        ]
+      },
+      "9": {
+        "name": "ROBOT_MESSAGE_TYPE_REQUEST_VALUE",
+        "fields": [
+          {"name": "requestId", "type": "uint32_t"},
+          {"name": "requestedType", "type": "uint32_t", "enum": "RequestedTypes"},
+          {"name": "requestTextMessage", "type": "charArray"}
+        ]
+      },
+      "10": {
+        "name": "ROBOT_MESSAGE_TYPE_RUNTIME_EXCEPTION",
+        "fields": [
+          {"name": "scriptLineNumber", "type": "int32_t"},
+          {"name": "scriptColumnNumber", "type": "int32_t"},
+          {"name": "runtimeExceptionTextMessage", "type": "charArray"}
+        ]
+      },
+      "14": {
+        "name": "ROBOT_MESSAGE_TYPE_PROGRAM_LABEL_THREADS",
+        "fields": [
+          {
+            "repeats_per_thread": true,
+            "fields": [
+              {"name": "labelId", "type": "int32_t"},
+              {"name": "labelNameLength", "type": "int32_t"},
+              {"name": "labelName", "type": "charArray"},
+              {"name": "threadNameLength", "type": "int32_t"},
+              {"name": "threadName", "type": "charArray"}
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "program_state_messages": {
+    "header": [
+      {"name": "messageSize", "type": "int32_t", "bytes": 4},
+      {"name": "messageType", "type": "uint8_t", "value": 25},
+      {"name": "timestamp", "type": "uint64_t", "bytes": 8},
+      {"name": "robotMessageType", "type": "char", "bytes": 1}
+    ],
+    "types": {
+      "0": {
+        "name": "PROGRAM_STATE_MESSAGE_TYPE_GLOBAL_VARIABLES_SETUP",
+        "fields": [
+          {"name": "startIndex", "type": "uint16_t"},
+          {"name": "variableNames", "type": "charArray", "description": "Newline delimited string list (var_1\\nvar_2\\n)"}
+        ]
+      },
+      "1": {
+        "name": "PROGRAM_STATE_MESSAGE_TYPE_GLOBAL_VARIABLES_UPDATE",
+        "fields": [
+          {"name": "startIndex", "type": "uint16_t"},
+          {"name": "variableValues", "type": "byteArray", "description": "Type byte + data + \\n delimiter for each variable"}
+        ]
+      }
+    }
+  },
+  "enums": {
+    "ControlModes": {
+      "0": "CONTROL_MODE_POSITION",
+      "1": "CONTROL_MODE_TEACH",
+      "2": "CONTROL_MODE_FORCE",
+      "3": "CONTROL_MODE_TORQUE"
+    },
+    "RobotModes": {
+      "-1": "ROBOT_MODE_NO_CONTROLLER",
+      "0": "ROBOT_MODE_DISCONNECTED",
+      "1": "ROBOT_MODE_CONFIRM_SAFETY",
+      "2": "ROBOT_MODE_BOOTING",
+      "3": "ROBOT_MODE_POWER_OFF",
+      "4": "ROBOT_MODE_POWER_ON",
+      "5": "ROBOT_MODE_IDLE",
+      "6": "ROBOT_MODE_BACKDRIVE",
+      "7": "ROBOT_MODE_RUNNING",
+      "8": "ROBOT_MODE_UPDATING_FIRMWARE"
+    },
+    "JointModes": {
+      "235": "JOINT_MODE_RESET",
+      "236": "JOINT_MODE_SHUTTING_DOWN",
+      "238": "JOINT_MODE_BACKDRIVE",
+      "239": "JOINT_MODE_POWER_OFF",
+      "240": "JOINT_MODE_READY_FOR_POWER_OFF",
+      "245": "JOINT_MODE_NOT_RESPONDING",
+      "246": "JOINT_MODE_MOTOR_INITIALISATION",
+      "247": "JOINT_MODE_BOOTING",
+      "251": "JOINT_MODE_VIOLATION",
+      "252": "JOINT_MODE_FAULT",
+      "253": "JOINT_MODE_RUNNING",
+      "255": "JOINT_MODE_IDLE"
+    },
+    "ToolModes": {
+      "235": "JOINT_MODE_RESET",
+      "236": "JOINT_MODE_SHUTTING_DOWN",
+      "239": "JOINT_MODE_POWER_OFF",
+      "245": "JOINT_MODE_NOT_RESPONDING",
+      "247": "JOINT_MODE_BOOTING",
+      "249": "JOINT_MODE_BOOTLOADER",
+      "252": "JOINT_MODE_FAULT",
+      "253": "JOINT_MODE_RUNNING",
+      "255": "JOINT_MODE_IDLE"
+    },
+    "SafetyModes": {
+      "1": "SAFETY_MODE_NORMAL",
+      "2": "SAFETY_MODE_REDUCED",
+      "3": "SAFETY_MODE_PROTECTIVE_STOP",
+      "4": "SAFETY_MODE_RECOVERY",
+      "5": "SAFETY_MODE_SAFEGUARD_STOP",
+      "6": "SAFETY_MODE_SYSTEM_EMERGENCY_STOP",
+      "7": "SAFETY_MODE_ROBOT_EMERGENCY_STOP",
+      "8": "SAFETY_MODE_VIOLATION",
+      "9": "SAFETY_MODE_FAULT",
+      "10": "SAFETY_MODE_VALIDATE_JOINT_ID",
+      "11": "SAFETY_MODE_UNDEFINED_SAFETY_MODE"
+    },
+    "SafetyStatusTypes": {
+      "1": "SAFETY_STATUS_NORMAL",
+      "2": "SAFETY_STATUS_REDUCED",
+      "3": "SAFETY_STATUS_PROTECTIVE_STOP",
+      "4": "SAFETY_STATUS_RECOVERY",
+      "5": "SAFETY_STATUS_SAFEGUARD_STOP",
+      "6": "SAFETY_STATUS_SYSTEM_EMERGENCY_STOP",
+      "7": "SAFETY_STATUS_ROBOT_EMERGENCY_STOP",
+      "8": "SAFETY_STATUS_VIOLATION",
+      "9": "SAFETY_STATUS_FAULT",
+      "10": "SAFETY_STATUS_VALIDATE_JOINT_ID",
+      "11": "SAFETY_STATUS_UNDEFINED_SAFETY_MODE",
+      "12": "SAFETY_STATUS_AUTOMATIC_MODE_SAFEGUARD_STOP",
+      "13": "SAFETY_STATUS_SYSTEM_THREE_POSITION_ENABLING_STOP"
+    },
+    "ReportLevels": {
+      "0": "REPORT_LEVEL_DEBUG",
+      "1": "REPORT_LEVEL_INFO",
+      "2": "REPORT_LEVEL_WARNING",
+      "3": "REPORT_LEVEL_VIOLATION",
+      "4": "REPORT_LEVEL_FAULT",
+      "128": "REPORT_LEVEL_DEVL_DEBUG",
+      "129": "REPORT_LEVEL_DEVL_INFO",
+      "130": "REPORT_LEVEL_DEVL_WARNING",
+      "131": "REPORT_LEVEL_DEVL_VIOLATION",
+      "132": "REPORT_LEVEL_DEVL_FAULT"
+    },
+    "RequestedTypes": {
+      "0": "REQUEST_VALUE_TYPE_BOOLEAN",
+      "1": "REQUEST_VALUE_TYPE_INTEGER",
+      "2": "REQUEST_VALUE_TYPE_FLOAT",
+      "3": "REQUEST_VALUE_TYPE_STRING",
+      "4": "REQUEST_VALUE_TYPE_POSE",
+      "5": "REQUEST_VALUE_TYPE_JOINTVECTOR",
+      "6": "REQUEST_VALUE_TYPE_WAYPOINT",
+      "7": "REQUEST_VALUE_TYPE_EXPRESSION",
+      "8": "REQUEST_VALUE_TYPE_NONE"
+    },
+    "ValueTypes_Software_5.9_plus": {
+      "0": "NONE",
+      "3": "CONST_STRING",
+      "4": "VAR_STRING",
+      "12": "POSE",
+      "13": "BOOL",
+      "14": "NUM",
+      "15": "INT",
+      "16": "FLOAT",
+      "17": "LIST",
+      "18": "MATRIX"
+    }
+  }
+}

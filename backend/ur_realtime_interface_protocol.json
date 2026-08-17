@@ -1,0 +1,66 @@
+{
+  "title": "Universal Robots Realtime Client Interface Protocol Specification",
+  "software_versions": ["5.9", "5.10"],
+  "deprecation_notice": "The RealTime interface has been deprecated since version 3.5. RTDE (Real-Time Data Exchange) is recommended instead.",
+  "network_ports": {
+    "realtime_client": {
+      "port": 30003,
+      "description": "Realtime state streaming (Read/Write, 500 Hz on e-Series, 125 Hz on CB-Series)"
+    },
+    "realtime_client_read_only": {
+      "port": 30013,
+      "description": "Realtime state streaming (Read-Only)"
+    }
+  },
+  "endianness": "Big-Endian",
+  "packet_structure": {
+    "total_bytes_sw_5_9": 1140,
+    "total_bytes_sw_5_10": 1220,
+    "format": "Sequential binary stream of doubles (8-byte floats), except Message Size (4-byte int32_t)",
+    "fields": [
+      {"offset": 0, "name": "Message Size", "type": "int32_t", "size_bytes": 4, "count": 1, "description": "Total message length in bytes (1140 or 1220)"},
+      {"offset": 4, "name": "Time", "type": "double", "size_bytes": 8, "count": 1, "description": "Time elapsed since controller started (seconds)"},
+      {"offset": 12, "name": "q target", "type": "double", "size_bytes": 48, "count": 6, "description": "Target joint positions (rad)"},
+      {"offset": 60, "name": "qd target", "type": "double", "size_bytes": 48, "count": 6, "description": "Target joint velocities (rad/s)"},
+      {"offset": 108, "name": "qdd target", "type": "double", "size_bytes": 48, "count": 6, "description": "Target joint accelerations (rad/s^2)"},
+      {"offset": 156, "name": "I target", "type": "double", "size_bytes": 48, "count": 6, "description": "Target joint currents (A)"},
+      {"offset": 204, "name": "M target", "type": "double", "size_bytes": 48, "count": 6, "description": "Target joint moments/torques (Nm)"},
+      {"offset": 252, "name": "q actual", "type": "double", "size_bytes": 48, "count": 6, "description": "Actual joint positions (rad)"},
+      {"offset": 300, "name": "qd actual", "type": "double", "size_bytes": 48, "count": 6, "description": "Actual joint velocities (rad/s)"},
+      {"offset": 348, "name": "I actual", "type": "double", "size_bytes": 48, "count": 6, "description": "Actual joint currents (A)"},
+      {"offset": 396, "name": "I control", "type": "double", "size_bytes": 48, "count": 6, "description": "Joint control currents (A)"},
+      {"offset": 444, "name": "Tool vector actual", "type": "double", "size_bytes": 48, "count": 6, "description": "Actual Cartesian coordinates of TCP (x, y, z, rx, ry, rz)"},
+      {"offset": 492, "name": "TCP speed actual", "type": "double", "size_bytes": 48, "count": 6, "description": "Actual Cartesian velocity of TCP (vx, vy, vz, vrx, vry, vrz)"},
+      {"offset": 540, "name": "TCP force", "type": "double", "size_bytes": 48, "count": 6, "description": "Generalized forces in TCP (Fx, Fy, Fz, Frx, Fry, Frz)"},
+      {"offset": 588, "name": "Tool vector target", "type": "double", "size_bytes": 48, "count": 6, "description": "Target Cartesian coordinates of TCP (x, y, z, rx, ry, rz)"},
+      {"offset": 636, "name": "TCP speed target", "type": "double", "size_bytes": 48, "count": 6, "description": "Target Cartesian velocity of TCP"},
+      {"offset": 684, "name": "Digital input bits", "type": "double", "size_bytes": 8, "count": 1, "description": "State of digital inputs (bits encoded as int64)"},
+      {"offset": 692, "name": "Motor temperatures", "type": "double", "size_bytes": 48, "count": 6, "description": "Temperature of each joint (°C)"},
+      {"offset": 740, "name": "Controller Timer", "type": "double", "size_bytes": 8, "count": 1, "description": "Controller realtime thread execution time"},
+      {"offset": 748, "name": "Test value", "type": "double", "size_bytes": 8, "count": 1, "description": "Universal Robots internal test value"},
+      {"offset": 756, "name": "Robot Mode", "type": "double", "size_bytes": 8, "count": 1, "enum": "RobotModes"},
+      {"offset": 764, "name": "Joint Modes", "type": "double", "size_bytes": 48, "count": 6, "enum": "ControlModes"},
+      {"offset": 812, "name": "Safety Mode", "type": "double", "size_bytes": 8, "count": 1, "enum": "SafetyModes"},
+      {"offset": 820, "name": "reserved_1", "type": "double", "size_bytes": 48, "count": 6, "description": "Internal use only"},
+      {"offset": 868, "name": "Tool Accelerometer values", "type": "double", "size_bytes": 24, "count": 3, "description": "Tool x, y, z accelerometer values"},
+      {"offset": 892, "name": "reserved_2", "type": "double", "size_bytes": 48, "count": 6, "description": "Internal use only"},
+      {"offset": 940, "name": "Speed scaling", "type": "double", "size_bytes": 8, "count": 1, "description": "Trajectory speed scaling factor (0.0 - 1.0)"},
+      {"offset": 948, "name": "Linear momentum norm", "type": "double", "size_bytes": 8, "count": 1, "description": "Norm of Cartesian linear momentum"},
+      {"offset": 956, "name": "reserved_3", "type": "double", "size_bytes": 8, "count": 1, "description": "Internal use only"},
+      {"offset": 964, "name": "reserved_4", "type": "double", "size_bytes": 8, "count": 1, "description": "Internal use only"},
+      {"offset": 972, "name": "V main", "type": "double", "size_bytes": 8, "count": 1, "description": "Masterboard: Main voltage"},
+      {"offset": 980, "name": "V robot", "type": "double", "size_bytes": 8, "count": 1, "description": "Masterboard: Robot 48V voltage"},
+      {"offset": 988, "name": "I robot", "type": "double", "size_bytes": 8, "count": 1, "description": "Masterboard: Robot current"},
+      {"offset": 996, "name": "V actual", "type": "double", "size_bytes": 48, "count": 6, "description": "Actual joint voltages"},
+      {"offset": 1044, "name": "Digital outputs", "type": "double", "size_bytes": 8, "count": 1, "description": "State of digital outputs"},
+      {"offset": 1052, "name": "Program state", "type": "double", "size_bytes": 8, "count": 1, "description": "Program execution state"},
+      {"offset": 1060, "name": "Elbow position", "type": "double", "size_bytes": 24, "count": 3, "description": "Elbow position (x, y, z)"},
+      {"offset": 1084, "name": "Elbow velocity", "type": "double", "size_bytes": 24, "count": 3, "description": "Elbow velocity (vx, vy, vz)"},
+      {"offset": 1108, "name": "Safety Status", "type": "double", "size_bytes": 8, "count": 1, "enum": "SafetyStatusTypes"},
+      {"offset": 1116, "name": "reserved_5", "type": "double", "size_bytes": 24, "count": 3, "description": "Internal use only (End of SW 5.9 message: 1140 bytes)"},
+      {"offset": 1140, "name": "Payload Mass", "type": "double", "size_bytes": 8, "count": 1, "software_min": "5.10", "description": "Payload Mass [kg]"},
+      {"offset": 1148, "name": "Payload CoG", "type": "double", "size_bytes": 24, "count": 3, "software_min": "5.10", "description": "Payload Center of Gravity (x, y, z) [m]"},
+      {"offset": 1172, "name": "Payload Inertia", "type": "double", "size_bytes": 48, "count": 6, "software_min": "5.10", "description": "Payload Inertia (Ixx, Iyy, Izz, Ixy, Ixz, Iyz) [kg*m^2] (End of SW 5.10 message: 1220 bytes)"}
+    ]
+  }
+}
