@@ -26,10 +26,10 @@ export default function TaskLayout() {
     return (
         <>
             <Header />
-            <TabBar />
             <main className="app-main">
                 <Outlet />
             </main>
+            <TabBar />
             <ToastContainer withNavbar />
         </>
     );

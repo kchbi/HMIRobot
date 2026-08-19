@@ -1,65 +1,62 @@
+/* Primary application navigation — fixed at the bottom, treated as
+   the main nav rather than a footer. Equal-width, never wraps. */
 .tab-bar {
     height: var(--tab-bar-height);
     min-height: var(--tab-bar-height);
-    background: #ffffff;
-    border-bottom: 1px solid var(--border);
+    background: var(--bg-dark);
     display: flex;
     align-items: stretch;
     flex-shrink: 0;
+    width: 100%;
     z-index: 100;
+    border-top: 1px solid var(--bg-dark);
 }
 
 .tab-item {
-    flex: 1;
+    flex: 1 1 0;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
-    transition: background var(--transition-fast), color var(--transition-fast);
     min-width: 0;
+    background: var(--bg-dark);
+    transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .tab-item + .tab-item {
-    border-left: 1px solid var(--border);
+    border-left: 1px solid var(--accent);
 }
 
 .tab-label {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    letter-spacing: 0.2px;
-    transition: color var(--transition-fast);
+    font-size: 26px;
+    font-weight: 500;
+    color: #ffffff;
+    letter-spacing: 0.3px;
     white-space: nowrap;
+    transition: color var(--transition-fast);
 }
 
-.tab-item:hover {
-    background: var(--accent-light);
-}
-
-.tab-item:hover .tab-label {
-    color: var(--text-secondary);
+.tab-item:hover:not(.active) {
+    background: var(--btn-dark-hover);
 }
 
 .tab-item.active {
-    background: var(--accent-light);
-}
-
-.tab-item.active .tab-label {
-    color: var(--text-primary);
-}
-
-.tab-item.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
     background: var(--accent);
 }
 
-@media (max-width: 720px) {
+.tab-item.active .tab-label {
+    color: var(--bg-dark);
+    font-weight: 600;
+}
+
+@media (max-height: 900px) {
     .tab-label {
-        font-size: 0.8rem;
+        font-size: 21px;
+    }
+}
+
+@media (max-height: 800px) {
+    .tab-label {
+        font-size: 18px;
     }
 }

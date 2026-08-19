@@ -1,0 +1,157 @@
+.plate-visual {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.plate-stage {
+    position: absolute;
+    inset: 0;
+    /* Centres the square overlay over the contained artwork. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Base layer: the supplied plate artwork — fitted, never stretched or cropped */
+.plate-image {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Sized exactly like the fitted artwork (largest square that fits, centred),
+   so the bolt percentages land on the real holes at any viewport size.
+
+   NOTE: this must NOT be done with `position:absolute; inset:0; margin:auto`.
+   With left/right and top/bottom all zero and width/height auto, both axes
+   resolve to the full containing block, `aspect-ratio` is dropped as
+   over-constrained, and the box becomes the whole (non-square) stage — which
+   throws every marker off its hole. As a centred flex item the ratio holds. */
+.plate-overlay {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 100%;
+    max-height: 100%;
+    pointer-events: none;
+}
+
+/* Marker wrapper: carries the overlay position only, so the animated layers
+   inside can scale without ever shifting off the bolt hole. Sized in px like
+   the dot itself; the % position keeps it aligned as the plate is resized. */
+.bolt-marker {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+}
+
+/* Base layer: the torque-id colour. Never replaced by the active animation. */
+.bolt-marker-dot {
+    grid-area: 1 / 1;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(17, 26, 51, 0.35);
+}
+
+/* Additional layer: expanding glow ring, only present on the active bolt.
+   Sits under the dot so the torque colour is never covered. */
+.bolt-marker-ring {
+    grid-area: 1 / 1;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 3px solid var(--bolt-glow, #f59e0b);
+    animation: bolt-ring 900ms ease-out infinite;
+}
+
+/* Steady halo behind the active dot: keeps the bolt findable at the dim point
+   of the pulse, so the operator never loses it between beats. */
+.bolt-marker.active .bolt-marker-dot {
+    animation: bolt-pulse 900ms ease-in-out infinite;
+}
+
+@keyframes bolt-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: drop-shadow(0 0 2px var(--bolt-glow));
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.45);
+        filter: drop-shadow(0 0 9px var(--bolt-glow)) drop-shadow(0 0 16px var(--bolt-glow));
+    }
+}
+
+@keyframes bolt-ring {
+    0% {
+        opacity: 0.9;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(2.8);
+    }
+}
+
+/* Operators who opt out of motion still get a clearly marked active bolt:
+   a static, permanently expanded ring instead of a pulsing one. */
+@media (prefers-reduced-motion: reduce) {
+    .bolt-marker.active .bolt-marker-dot,
+    .bolt-marker-ring {
+        animation: none;
+    }
+
+    .bolt-marker.active .bolt-marker-dot {
+        filter: drop-shadow(0 0 6px var(--bolt-glow));
+    }
+
+    .bolt-marker-ring {
+        opacity: 0.9;
+        transform: scale(1.9);
+    }
+}
+
+/* Reference: legend sits in the top-right corner of the Visual area */
+.torque-legend {
+    position: absolute;
+    top: 12px;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.torque-legend-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.legend-dot {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}

@@ -1,31 +1,43 @@
+/* Reference: rows on a ~32px rhythm, 14px dot, navy label, muted gray value */
 .status-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0;
 }
 
 .status-item {
     display: grid;
-    grid-template-columns: 14px 1fr auto;
+    grid-template-columns: 14px auto 1fr;
     align-items: center;
-    gap: 10px;
-    font-size: 0.9rem;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.status-item:last-child {
-    border-bottom: none;
+    column-gap: 10px;
+    font-size: 20px;
+    height: 32px;
 }
 
 .status-label {
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
 }
 
 .status-value {
-    font-family: var(--font-mono);
-    font-weight: 600;
-    color: var(--text-primary);
-    text-align: right;
+    color: var(--text-secondary);
+    font-weight: 400;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-height: 900px) {
+    .status-item {
+        font-size: 17px;
+        height: 27px;
+    }
+}
+
+@media (max-height: 800px) {
+    .status-item {
+        font-size: 15px;
+        height: 24px;
+    }
 }

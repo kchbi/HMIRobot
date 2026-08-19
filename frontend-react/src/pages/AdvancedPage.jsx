@@ -45,8 +45,8 @@ export default function AdvancedPage() {
     return (
         <div className="advanced-page">
             <div className="advanced-grid">
-                <div className="adv-card">
-                    <h3 className="adv-card-title">TCP Configuration</h3>
+                <div className="adv-section">
+                    <h3 className="adv-section-title">TCP Configuration</h3>
                     <div className="adv-form">
                         <div className="form-group">
                             <label htmlFor="tcp-host">Robot IP Address</label>
@@ -69,8 +69,8 @@ export default function AdvancedPage() {
                             />
                         </div>
                         <div className="form-row">
-                            <button className="adv-btn primary" onClick={handleConnect}>Connect</button>
-                            <button className="adv-btn danger" onClick={handleDisconnect}>Disconnect</button>
+                            <button className="hmi-btn adv-btn" onClick={handleConnect}>Connect</button>
+                            <button className="hmi-btn adv-btn danger" onClick={handleDisconnect}>Disconnect</button>
                         </div>
                         <div className="tcp-status">
                             <span className={`status-dot ${tcpConnected ? 'green' : 'red'}`}></span>
@@ -79,10 +79,9 @@ export default function AdvancedPage() {
                     </div>
                 </div>
 
-                <div className="adv-card">
-                    <h3 className="adv-card-title">System Information</h3>
+                <div className="adv-section">
+                    <h3 className="adv-section-title">System Information</h3>
                     <div className="sys-info">
-                        <div className="sys-row"><span>Software Version</span><strong>2.0</strong></div>
                         <div className="sys-row">
                             <span>WebSocket</span>
                             <strong style={{ color: wsConnected ? 'var(--green)' : 'var(--red)' }}>
@@ -94,8 +93,8 @@ export default function AdvancedPage() {
                     </div>
                 </div>
 
-                <div className="adv-card full-width">
-                    <h3 className="adv-card-title">Command Console</h3>
+                <div className="adv-section full-width">
+                    <h3 className="adv-section-title">Command Console</h3>
                     <div className="console-area">
                         <div className="console-output" ref={outputRef}>
                             {consoleLines.map((line, i) => (
@@ -114,7 +113,7 @@ export default function AdvancedPage() {
                                 onChange={(e) => setParams(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                             />
-                            <button className="adv-btn primary" onClick={handleSend}>Send</button>
+                            <button className="hmi-btn adv-btn" onClick={handleSend}>Send</button>
                         </div>
                     </div>
                 </div>

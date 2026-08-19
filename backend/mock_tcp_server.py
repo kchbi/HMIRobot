@@ -17,6 +17,23 @@ import random
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [MOCK] %(message)s")
 logger = logging.getLogger("mock_tcp_server")
 
+# How long a single bolt is held in "in_progress". The TCP client polls
+# GET_STATUS about once a second, so this window must cover several polls.
+BOLT_CYCLE_MIN_SECONDS = 3.0
+BOLT_CYCLE_MAX_SECONDS = 4.0
+
+# Stages of driving a single bolt, shown in the Status panel's Process Steps.
+# They describe the operation only - the bolt id is deliberately absent, since
+# which bolt is being driven is already shown by the pulsing plate marker.
+# The cycle time above is split across these, so the whole list runs per bolt.
+BOLT_CYCLE_STAGES = [
+    "Moving to bolt position",
+    "Engaging driver",
+    "Applying torque",
+    "Verifying torque",
+    "Retracting driver",
+]
+
 
 class MockRobotState:
     """Simulates the internal state of a robot controller."""
@@ -61,6 +78,13 @@ class MockRobotState:
                 "torque": 0,
             }
 
+        # Order the bolts are driven in. Only 1-24 have a marker on the plate
+        # overlay, so the run covers exactly those; 25-40 stay pending.
+        self.bolt_sequence = list(range(1, 25))
+
+        # Id of the single bolt currently being driven (None when idle).
+        self.active_bolt = None
+
         # Gel task state
         self.outer_gels = 0
         self.inner_gels = 0
@@ -88,7 +112,20 @@ class MockRobotState:
 
         # Add task-specific data
         if self.active_task == "bolt":
-            status["data"]["bolt_positions"] = self.bolt_positions
+            # Serialised fresh on every poll so a bolt that is mid-cycle is
+            # reported as "in_progress" for as long as it actually is one.
+            # `torque` is the field the UI colours from; `torque_id` mirrors it
+            # for consumers that use the protocol-spec name.
+            status["data"]["bolt_positions"] = {
+                pos_id: {
+                    "id": pos_id,
+                    "status": pos["status"],
+                    "torque": pos["torque"],
+                    "torque_id": pos["torque"],
+                }
+                for pos_id, pos in self.bolt_positions.items()
+            }
+            status["data"]["active_bolt"] = self.active_bolt
         elif self.active_task == "gel":
             status["data"]["gel_status"] = {
                 "outer_gels": self.outer_gels,
@@ -199,7 +236,11 @@ class MockTCPServer:
 
         self.state.current_command = "RUNNING PROGRAM"
         self.state.program_running = True
-        self.state.process_progress = 0.0
+        # The bolt task advances one bolt per press, so its progress is the count
+        # of bolts driven on the plate so far and must survive between presses.
+        # The other tasks run start-to-finish, so they do restart from zero.
+        if self.state.active_task != "bolt":
+            self.state.process_progress = 0.0
 
         # Start process simulation
         if self._process_task and not self._process_task.done():
@@ -212,18 +253,12 @@ class MockTCPServer:
         """Simulate a multi-step process."""
         task = self.state.active_task
 
+        # The bolt task walks the plate bolt by bolt, so it has its own driver.
         if task == "bolt":
-            steps = [
-                "Moving to bolt position",
-                "Aligning tool",
-                "Engaging fastener",
-                "Applying torque",
-                "Verifying torque",
-                "Retracting tool",
-                "Moving to next position",
-                "Cycle completed",
-            ]
-        elif task == "gel":
+            await self._simulate_bolt_process()
+            return
+
+        if task == "gel":
             steps = [
                 "Pickup End Effector with Gel from Nest",
                 "Hover End Effector on ESC",
@@ -267,17 +302,109 @@ class MockTCPServer:
                 else:
                     self.state.backers += 1
 
-            if task == "bolt" and step == "Verifying torque":
-                # Mark a random bolt as complete
-                for pos_id, pos in self.state.bolt_positions.items():
-                    if pos["status"] == "pending":
-                        pos["status"] = "complete"
-                        pos["torque"] = random.choice([20, 40, 60])
-                        break
-
         self.state.program_running = False
         self.state.current_command = "NO COMMAND"
         logger.info(f"Process complete for task: {task}")
+
+    async def _simulate_bolt_process(self):
+        """Drive exactly ONE bolt — the next pending one in the sequence.
+
+        One press of Start = one bolt, so the operator advances the plate bolt by
+        bolt and can inspect between cycles. The run ends as soon as that bolt is
+        home; the remaining bolts stay pending until Start is pressed again.
+
+        The bolt goes pending -> in_progress -> complete, never straight to
+        complete, and stays in_progress for BOLT_CYCLE_SECONDS so the ~1 Hz
+        GET_STATUS poll observes it on several consecutive polls. The torque id is
+        assigned on entry to in_progress and kept unchanged through complete.
+        """
+        state = self.state
+
+        # A finished plate starts over on the next press rather than reporting
+        # nothing left to do.
+        if not any(state.bolt_positions[i]["status"] == "pending" for i in state.bolt_sequence):
+            for i in state.bolt_sequence:
+                state.bolt_positions[i]["status"] = "pending"
+                state.bolt_positions[i]["torque"] = 0
+            state.process_progress = 0.0
+
+        total = len(state.bolt_sequence)
+        bolt_id = next(
+            (i for i in state.bolt_sequence if state.bolt_positions[i]["status"] == "pending"),
+            None,
+        )
+
+        try:
+            if bolt_id is not None:
+                bolt = state.bolt_positions[bolt_id]
+
+                # Enter in_progress with the torque id already set, so the UI can
+                # show the torque colour and the active state at the same time.
+                torque = random.choice([20, 40, 60])
+                bolt["torque"] = torque
+                bolt["status"] = "in_progress"
+                state.active_bolt = bolt_id
+                logger.info(f"Bolt {bolt_id} in_progress (torque {torque})")
+
+                # One press drives one bolt, so the panel shows that bolt's cycle
+                # and nothing else - cleared here rather than accumulated, so the
+                # list stays the five stages instead of growing on every press.
+                state.process_steps = []
+
+                # Total held time is unchanged, just divided across the stages, so
+                # the bolt still stays in_progress across several ~1 Hz polls.
+                stage_seconds = (
+                    random.uniform(BOLT_CYCLE_MIN_SECONDS, BOLT_CYCLE_MAX_SECONDS)
+                    / len(BOLT_CYCLE_STAGES)
+                )
+                for stage in BOLT_CYCLE_STAGES:
+                    state.process_steps.append({"name": stage, "status": "in_progress"})
+                    await asyncio.sleep(stage_seconds)
+                    state.process_steps[-1]["status"] = "complete"
+
+                bolt["status"] = "complete"  # torque id is deliberately kept
+                state.active_bolt = None
+
+                done = sum(
+                    1 for i in state.bolt_sequence
+                    if state.bolt_positions[i]["status"] == "complete"
+                )
+                state.process_progress = (done / total) * 100
+                logger.info(f"Bolt {bolt_id} complete ({done}/{total})")
+
+            state.current_command = "NO COMMAND"
+            remaining = sum(
+                1 for i in state.bolt_sequence
+                if state.bolt_positions[i]["status"] == "pending"
+            )
+            if remaining:
+                logger.info(f"Bolt cycle done — {remaining} bolt(s) left, press Start for the next")
+            else:
+                logger.info("Process complete for task: bolt — plate finished")
+
+        except asyncio.CancelledError:
+            # Aborted mid-cycle: the interrupted bolt was never driven home, so
+            # it goes back to pending rather than being reported as complete.
+            self._clear_active_bolt()
+            raise
+
+        except Exception:
+            logger.exception("Bolt process failed")
+            self._clear_active_bolt()
+            state.current_command = "ERROR"
+
+        finally:
+            # Whatever ended the run — finished, aborted or failed — the robot is
+            # no longer bolting, which is what stops the UI showing an active bolt.
+            state.program_running = False
+
+    def _clear_active_bolt(self):
+        """Return any mid-cycle bolt to pending and drop the active marker."""
+        for pos in self.state.bolt_positions.values():
+            if pos["status"] == "in_progress":
+                pos["status"] = "pending"
+                pos["torque"] = 0
+        self.state.active_bolt = None
 
     async def _handle_stow(self, params: dict) -> dict:
         self.state.current_command = "STOWING"
@@ -297,6 +424,11 @@ class MockTCPServer:
     async def _handle_abort(self, params: dict) -> dict:
         if self._process_task and not self._process_task.done():
             self._process_task.cancel()
+
+        # Done here as well as in the task's own handler: cancellation only takes
+        # effect on the next event-loop pass, and a GET_STATUS poll must never
+        # see a bolt still in_progress after ABORT returned ok.
+        self._clear_active_bolt()
 
         self.state.program_running = False
         self.state.current_command = "ABORTED"
@@ -423,6 +555,7 @@ class MockTCPServer:
         self.state.active_task = task
         self.state.process_steps = []
         self.state.process_progress = 0.0
+        self.state.active_bolt = None
         return {"status": "ok", "message": f"Task set to {task}"}
 
     async def _handle_get_progress(self, params: dict) -> dict:

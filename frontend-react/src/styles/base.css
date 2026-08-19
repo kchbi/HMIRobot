@@ -15,15 +15,17 @@ body {
     font-family: var(--font-ui);
     background: var(--bg-page);
     color: var(--text-primary);
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 button {
@@ -66,27 +68,23 @@ a {
 }
 
 .status-dot {
-    width: 10px;
-    height: 10px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     display: inline-block;
     flex-shrink: 0;
 }
 
 .status-dot.green {
-    background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-    animation: pulse-green 2s infinite;
+    background: #17a03c;
 }
 
 .status-dot.red {
     background: var(--red);
-    box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
 }
 
 .status-dot.yellow {
-    background: var(--yellow);
-    box-shadow: 0 0 6px rgba(234, 179, 8, 0.3);
+    background: #f2d024;
 }
 
 @keyframes pulse-green {
@@ -106,4 +104,56 @@ a {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
+    background: var(--bg-page);
+}
+
+/* Shared industrial HMI section heading — reference: ~30px semibold navy */
+.hmi-heading {
+    font-size: 30px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0;
+    margin-bottom: 16px;
+}
+
+@media (max-height: 900px) {
+    .hmi-heading {
+        font-size: 24px;
+        margin-bottom: 12px;
+    }
+}
+
+@media (max-height: 800px) {
+    .hmi-heading {
+        font-size: 21px;
+        margin-bottom: 10px;
+    }
+}
+
+/* Shared dark-navy HMI push button */
+.hmi-btn {
+    background: var(--btn-dark-bg);
+    color: var(--btn-dark-text);
+    border: 1px solid var(--btn-dark-bg);
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: 0.2px;
+    padding: 16px 20px;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.hmi-btn:hover:not(:disabled) {
+    background: var(--btn-dark-hover);
+}
+
+.hmi-btn:active:not(:disabled) {
+    background: #0d1428;
+    border-color: var(--accent);
+}
+
+.hmi-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }

@@ -34,23 +34,23 @@ export default function CalibratePage() {
                     <div className="cal-section">
                         <h3>Calibration Position 1:</h3>
                         <div className="cal-btn-group">
-                            <button className="cal-btn" onClick={() => sendCommand('GO_CALIBRATION', { position: 1 })}>Go</button>
-                            <button className="cal-btn" onClick={() => sendCommand('SET_CALIBRATION', { position: 1 })}>Set</button>
+                            <button className="hmi-btn cal-btn" onClick={() => sendCommand('GO_CALIBRATION', { position: 1 })}>Go</button>
+                            <button className="hmi-btn cal-btn" onClick={() => sendCommand('SET_CALIBRATION', { position: 1 })}>Set</button>
                         </div>
                     </div>
 
                     <div className="cal-section">
                         <h3>Calibration Position 2:</h3>
                         <div className="cal-btn-group">
-                            <button className="cal-btn" onClick={() => sendCommand('GO_CALIBRATION', { position: 2 })}>Go</button>
-                            <button className="cal-btn" onClick={() => sendCommand('SET_CALIBRATION', { position: 2 })}>Set</button>
+                            <button className="hmi-btn cal-btn" onClick={() => sendCommand('GO_CALIBRATION', { position: 2 })}>Go</button>
+                            <button className="hmi-btn cal-btn" onClick={() => sendCommand('SET_CALIBRATION', { position: 2 })}>Set</button>
                         </div>
                     </div>
 
                     <div className="cal-section">
                         <h3>Update Laser TCP:</h3>
                         <button
-                            className="cal-btn wide"
+                            className="hmi-btn cal-btn wide"
                             onClick={() => sendCommand('UPDATE_LASER_TCP', { x: 0, y: 0, z: 0 })}
                         >
                             Update
@@ -59,7 +59,7 @@ export default function CalibratePage() {
 
                     <div className="cal-section">
                         <h3>Take Measurement:</h3>
-                        <button className="cal-btn wide" onClick={() => sendCommand('READ_LASER')}>
+                        <button className="hmi-btn cal-btn wide" onClick={() => sendCommand('READ_LASER')}>
                             Read Laser
                         </button>
                         <div className="laser-reading">

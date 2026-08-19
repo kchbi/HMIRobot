@@ -57,19 +57,19 @@ export default function RobotMovePad() {
             <h3>Move Robot</h3>
             <div className="dpad-container">
                 <button
-                    className={`dpad-btn up${pressing === 'up' ? ' pressing' : ''}`}
+                    className={`hmi-btn dpad-btn up${pressing === 'up' ? ' pressing' : ''}`}
                     onClick={() => move('MOVE_Y', 1)}
                 >+Y</button>
                 <button
-                    className={`dpad-btn left${pressing === 'left' ? ' pressing' : ''}`}
+                    className={`hmi-btn dpad-btn left${pressing === 'left' ? ' pressing' : ''}`}
                     onClick={() => move('MOVE_X', -1)}
                 >-X</button>
                 <button
-                    className={`dpad-btn right${pressing === 'right' ? ' pressing' : ''}`}
+                    className={`hmi-btn dpad-btn right${pressing === 'right' ? ' pressing' : ''}`}
                     onClick={() => move('MOVE_X', 1)}
                 >+X</button>
                 <button
-                    className={`dpad-btn down${pressing === 'down' ? ' pressing' : ''}`}
+                    className={`hmi-btn dpad-btn down${pressing === 'down' ? ' pressing' : ''}`}
                     onClick={() => move('MOVE_Y', -1)}
                 >-Y</button>
             </div>

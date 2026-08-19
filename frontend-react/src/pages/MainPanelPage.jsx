@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import StatusList from '../components/StatusList';
 import ProcessSteps from '../components/ProcessSteps';
-import BoltPlateCanvas from '../components/BoltPlateCanvas';
+import BoltPlateVisual from '../components/BoltPlateVisual';
 import ProgressDonut from '../components/ProgressDonut';
 import ProgressBar from '../components/ProgressBar';
 import './MainPanelPage.css';
@@ -16,21 +16,20 @@ export default function MainPanelPage() {
     const programRunning = !!robotStatus.program_running;
 
     const CONTROLS = [
-        { action: 'INITIALIZE', label: 'Initialize', variant: 'secondary', disabled: initializing },
-        { action: 'START', label: 'Start', variant: 'primary', disabled: !robotStatus.initialized || programRunning },
-        { action: 'STOW', label: 'Stow', variant: 'secondary', disabled: programRunning },
-        { action: 'ABORT', label: 'Abort', variant: 'danger', disabled: false },
+        { action: 'INITIALIZE', label: 'Initialize', disabled: initializing },
+        { action: 'START', label: 'Start', disabled: !robotStatus.initialized || programRunning },
+        { action: 'STOW', label: 'Stow', disabled: programRunning },
     ];
 
     return (
         <div className="main-panel-layout">
-            <div className="panel panel-control">
-                <h2 className="panel-heading"><span className="heading-icon">🔧</span>Control</h2>
+            <section className="hmi-section section-control">
+                <h2 className="hmi-heading">Control</h2>
                 <div className="control-buttons">
                     {CONTROLS.map((btn) => (
                         <button
                             key={btn.action}
-                            className={`ctrl-btn ${btn.variant}`}
+                            className="hmi-btn ctrl-btn"
                             disabled={btn.disabled}
                             onClick={() => sendCommand(btn.action)}
                         >
@@ -38,19 +37,23 @@ export default function MainPanelPage() {
                         </button>
                     ))}
                 </div>
-            </div>
+            </section>
 
-            <div className="panel panel-status">
-                <h2 className="panel-heading"><span className="heading-icon">📊</span>Status</h2>
+            <section className="hmi-section section-status">
+                <h2 className="hmi-heading">Status</h2>
                 <StatusList status={robotStatus} connected={tcpConnected} />
                 <ProcessSteps steps={robotStatus.process_steps} />
-            </div>
+            </section>
 
-            <div className="panel panel-visual">
-                <h2 className="panel-heading"><span className="heading-icon">👁</span>Visual</h2>
+            <section className="hmi-section section-visual">
+                <h2 className="hmi-heading">Visual</h2>
                 <div className="visual-area">
                     {task === 'bolt' && (
-                        <BoltPlateCanvas boltPositions={robotStatus.bolt_positions} />
+                        <BoltPlateVisual
+                            boltPositions={robotStatus.bolt_positions}
+                            activeBolt={robotStatus.active_bolt}
+                            bolting={programRunning && robotStatus.active_task === 'bolt'}
+                        />
                     )}
                     {task === 'gel' && (
                         <ProgressDonut gelData={robotStatus.gel_status} />
@@ -94,7 +97,7 @@ export default function MainPanelPage() {
                         </div>
                     )}
                 </div>
-            </div>
+            </section>
         </div>
     );
 }

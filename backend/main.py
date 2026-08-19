@@ -30,7 +30,27 @@ logger = logging.getLogger("server")
 
 # ─── Paths ──────────────────────────────────────────────────────────────────
 BACKEND_DIR = Path(__file__).parent
-FRONTEND_DIR = BACKEND_DIR.parent / "frontend-react" / "dist"
+
+
+def _find_frontend_dist() -> Optional[Path]:
+    """Locate the built React app.
+
+    Checked in order so the same backend works whether frontend-react sits
+    beside the backend package (README layout) or one level further out, as it
+    does when the backend is dropped into an existing checkout. Returns None
+    when the frontend has not been built — that is the normal case in dev,
+    where Vite serves the UI on :5173 and proxies /ws and /api to this server.
+    """
+    for candidate in (
+        BACKEND_DIR.parent / "frontend-react" / "dist",
+        BACKEND_DIR.parent.parent / "frontend-react" / "dist",
+    ):
+        if (candidate / "index.html").is_file():
+            return candidate
+    return None
+
+
+FRONTEND_DIR = _find_frontend_dist()
 
 # ─── Global State ───────────────────────────────────────────────────────────
 tcp_client: Optional[RobotTCPClient] = None
@@ -285,19 +305,38 @@ async def websocket_endpoint(ws: WebSocket):
 # ─── Static Files (serve React build) ──────────────────────────────────────
 # Mount hashed build assets, then fall back to index.html for every other
 # path so React Router's client-side routes (e.g. /bolt/calibrate) resolve.
-app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
+if FRONTEND_DIR is not None:
+    logger.info(f"Serving frontend build from {FRONTEND_DIR}")
+    assets_dir = FRONTEND_DIR / "assets"
+    if assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve a static build file if it exists, else fall back to the SPA
+        shell so React Router's client-side routes (e.g. /bolt/calibrate) resolve."""
+        candidate = FRONTEND_DIR / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIR / "index.html")
 
-@app.get("/{full_path:path}")
-async def serve_spa(full_path: str):
-    """Serve a static build file if it exists, else fall back to the SPA
-    shell so React Router's client-side routes (e.g. /bolt/calibrate) resolve."""
-    candidate = FRONTEND_DIR / full_path
-    if full_path and candidate.is_file():
-        return FileResponse(candidate)
-    return FileResponse(FRONTEND_DIR / "index.html")
+else:
+    # No build present: the UI is being served by `npm run dev` on :5173, which
+    # proxies /ws and /api here. Keep the API up and say so instead of 404ing
+    # on / with no explanation.
+    logger.info("No frontend build found - API/WebSocket only (use `npm run dev` on :5173)")
+
+    @app.get("/")
+    async def no_frontend():
+        return JSONResponse(
+            {
+                "service": "MO Cobot Control backend",
+                "frontend": "not built - open the Vite dev server on http://localhost:5173",
+                "websocket": "/ws",
+            }
+        )
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
