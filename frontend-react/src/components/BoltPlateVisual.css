@@ -5,16 +5,58 @@
     min-height: 0;
 }
 
+/* Sizing context for the plate frame: `container-type: size` makes both of the
+   stage's own dimensions readable from inside via cqw/cqh, which is what lets
+   the frame resolve to "largest artwork-shaped box that fits" in one step, in
+   either orientation, with no JS and no viewport units. */
 .plate-stage {
     position: absolute;
     inset: 0;
-    /* Centres the square overlay over the contained artwork. */
+    container-type: size;
+    /* Centres the plate frame in whatever space is left over. */
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-/* Base layer: the supplied plate artwork — fitted, never stretched or cropped */
+/* THE plate coordinate system. Exactly the box the artwork renders into: the
+   largest box of the artwork's aspect ratio that fits the stage, centred. The
+   image and the marker overlay are both `inset: 0` inside this one box, so they
+   can never disagree about where the plate is, and object-fit letterboxing has
+   no room to appear for markers to drift across, at any window size, screen
+   resolution or browser zoom.
+
+   --plate-aspect is the artwork's width / height (1 for the square plate PNG).
+   Replacing the artwork with a differently shaped image means updating only
+   that one value.
+
+   NOTE: this must NOT be done with `height: 100%; aspect-ratio: 1/1` plus
+   max-width. When the stage is taller than it is wide, the specified height
+   stays 100% while max-width clamps the width, the ratio is dropped, and the
+   box becomes the whole (non-square) stage - which stretches every marker away
+   from its hole vertically. */
+.plate-frame {
+    --plate-aspect: 1;
+    position: relative;
+
+    /* Fallback for engines without container-query units. */
+    height: 100%;
+    aspect-ratio: var(--plate-aspect);
+    max-width: 100%;
+}
+
+@supports (width: 1cqmin) {
+    .plate-frame {
+        width: min(100cqw, 100cqh * var(--plate-aspect));
+        height: min(100cqh, 100cqw / var(--plate-aspect));
+        aspect-ratio: auto;
+        max-width: none;
+    }
+}
+
+/* Base layer: the supplied plate artwork — fitted, never stretched or cropped.
+   The frame already carries the artwork's aspect ratio, so `contain` fits edge
+   to edge here and stays only as a no-distortion guarantee. */
 .plate-image {
     position: absolute;
     inset: 0;
@@ -24,21 +66,13 @@
     object-fit: contain;
 }
 
-/* Sized exactly like the fitted artwork (largest square that fits, centred),
-   so the bolt percentages land on the real holes at any viewport size.
-
-   NOTE: this must NOT be done with `position:absolute; inset:0; margin:auto`.
-   With left/right and top/bottom all zero and width/height auto, both axes
-   resolve to the full containing block, `aspect-ratio` is dropped as
-   over-constrained, and the box becomes the whole (non-square) stage — which
-   throws every marker off its hole. As a centred flex item the ratio holds. */
+/* Marker layer: the same box as the image, by construction - both fill the
+   frame. Bolt coordinates are normalised percentages of this box, so a marker
+   lands on the same physical hole whatever size the plate renders at. */
 .plate-overlay {
-    position: relative;
+    position: absolute;
+    inset: 0;
     z-index: 1;
-    height: 100%;
-    aspect-ratio: 1 / 1;
-    max-width: 100%;
-    max-height: 100%;
     pointer-events: none;
 }
 

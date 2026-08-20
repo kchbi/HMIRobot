@@ -57,27 +57,32 @@ export default function BoltPlateVisual({ boltPositions, activeBolt = null, bolt
     return (
         <div className="plate-visual">
             <div className="plate-stage">
-                <img className="plate-image" src={plateImage} alt="Top plate bolt layout" />
+                {/* One box for both layers: the image fills it and the marker
+                    overlay fills it, so marker percentages are percentages of
+                    the plate as actually rendered - never of leftover space. */}
+                <div className="plate-frame">
+                    <img className="plate-image" src={plateImage} alt="Top plate bolt layout" />
 
-                <div className="plate-overlay" aria-hidden="true">
-                    {Object.entries(BOLT_OVERLAY_POSITIONS).map(([id, pos]) => {
-                        const bolt = bolts[id];
-                        // Only the one bolt the robot is currently driving pulses;
-                        // pending, complete and failed bolts stay static.
-                        const active = id === activeId;
-                        const color = markerColor(bolt, active);
-                        if (!color) return null;
-                        return (
-                            <span
-                                key={id}
-                                className={`bolt-marker${active ? ' active' : ''}`}
-                                style={{ left: `${pos.x}%`, top: `${pos.y}%`, '--bolt-glow': color }}
-                            >
-                                {active && <span className="bolt-marker-ring" />}
-                                <span className="bolt-marker-dot" style={{ background: color }} />
-                            </span>
-                        );
-                    })}
+                    <div className="plate-overlay" aria-hidden="true">
+                        {Object.entries(BOLT_OVERLAY_POSITIONS).map(([id, pos]) => {
+                            const bolt = bolts[id];
+                            // Only the one bolt the robot is currently driving pulses;
+                            // pending, complete and failed bolts stay static.
+                            const active = id === activeId;
+                            const color = markerColor(bolt, active);
+                            if (!color) return null;
+                            return (
+                                <span
+                                    key={id}
+                                    className={`bolt-marker${active ? ' active' : ''}`}
+                                    style={{ left: `${pos.x}%`, top: `${pos.y}%`, '--bolt-glow': color }}
+                                >
+                                    {active && <span className="bolt-marker-ring" />}
+                                    <span className="bolt-marker-dot" style={{ background: color }} />
+                                </span>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
