@@ -18,8 +18,10 @@ export function useWebSocket(onMessage) {
     onMessageRef.current = onMessage;
 
     const connect = useCallback(() => {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        // In dev (Vite proxy): connects to ws://localhost:5173/ws → proxied to backend
+        // In production build: uses VITE_WS_URL env var to connect directly to backend
+        const wsUrl = import.meta.env.VITE_WS_URL
+            || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
         let ws;
         try {
