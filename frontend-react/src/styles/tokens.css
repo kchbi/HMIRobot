@@ -48,6 +48,7 @@
 
     /* Sizing */
     --header-height: 108px;
+    --logo-height: 46px;
     --tab-bar-height: 82px;
     /* 1920x1080 reference: header 110px, nav 83px (≈10.2% / 7.7% of height) */
     --sidebar-width: 190px;
@@ -77,6 +78,7 @@
 @media (max-height: 900px) {
     :root {
         --header-height: 84px;
+        --logo-height: 36px;
         --tab-bar-height: 66px;
     }
 }
@@ -84,6 +86,7 @@
 @media (max-height: 800px) {
     :root {
         --header-height: 70px;
+        --logo-height: 30px;
         --tab-bar-height: 56px;
     }
 }

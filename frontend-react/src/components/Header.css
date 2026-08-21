@@ -20,8 +20,13 @@
 }
 
 .logo-btn {
-    display: flex;
-    align-items: center;
+    /* Crop window sized to the artwork's bounding box inside logo.png */
+    display: block;
+    position: relative;
+    overflow: hidden;
+    height: var(--logo-height);
+    aspect-ratio: 1103 / 317;
+    flex-shrink: 0;
     padding: 0;
     transition: opacity var(--transition-fast);
 }
@@ -31,10 +36,26 @@
 }
 
 .logo-image {
-    height: 72px;
-    width: auto;
+    /* logo.png is 1742x903 with a baked-in navy background; the Lam Research
+       artwork occupies 1103x317 starting at (316, 236). Scale + offset so the
+       crop window shows only the artwork -- flat padding is trimmed, the
+       artwork itself is untouched and its aspect ratio stays locked. */
+    position: absolute;
+    width: 157.933%;
+    /* 1742 / 1103 */
+    height: 284.858%;
+    /* 903 / 317  */
+    left: -28.649%;
+    /* -316 / 1103 */
+    top: -74.448%;
+    /* -236 / 317  */
+    max-width: none;
     display: block;
-    object-fit: contain;
+    /* Box matches the source aspect ratio exactly, so fill == no distortion. */
+    object-fit: fill;
+    /* The asset's baked navy is darker than --bg-header on every channel,
+       so lighten drops it onto the header without recolouring the white mark. */
+    mix-blend-mode: lighten;
 }
 
 .header-center {
@@ -109,10 +130,6 @@
 
 /* Hold the reference proportions on shorter HMI panels */
 @media (max-height: 900px) {
-    .logo-image {
-        height: 58px;
-    }
-
     .app-title {
         font-size: 25px;
     }
@@ -129,10 +146,6 @@
 }
 
 @media (max-height: 800px) {
-    .logo-image {
-        height: 48px;
-    }
-
     .app-title {
         font-size: 21px;
     }
