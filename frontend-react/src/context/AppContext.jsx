@@ -4,6 +4,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 const AppContext = createContext(null);
 
 const TASK_NAMES = { bolt: 'Top Plate Bolting', clean: 'Chamber Cleaning', gel: 'Gel Installation' };
+const TASK_APP_NAMES = { bolt: 'TopPlateBolt', clean: 'ChamberClean', gel: 'GelInstall' };
 
 let toastId = 0;
 
@@ -18,6 +19,7 @@ export function AppProvider({ children }) {
         { text: 'System ready. Type a command or use the buttons above.', type: 'system' },
     ]);
     const consoleIdRef = useRef(0);
+    const boltCounterRef = useRef(0);
 
     const showToast = useCallback((message, type = 'info') => {
         const id = ++toastId;
@@ -34,7 +36,7 @@ export function AppProvider({ children }) {
 
     const handleMessage = useCallback((message) => {
         switch (message.type) {
-            case 'status_update':
+            case 'update_state':
                 setRobotStatus(message.data || {});
                 break;
             case 'connection': {
@@ -43,22 +45,34 @@ export function AppProvider({ children }) {
                 if (connected) showToast('TCP connected to robot', 'success');
                 break;
             }
-            case 'command_response': {
-                const { action, data } = message;
-                if (action === 'READ_LASER' && data?.status === 'ok') {
-                    setLaserReading(data);
-                }
+            case 'command_received': {
+                const data = message.data;
                 if (data) {
                     const msg = data.message || JSON.stringify(data);
-                    addConsoleLine(`← [${action}] ${msg}`, data.status === 'ok' ? 'received' : 'error');
+                    addConsoleLine(`← ${msg}`, data.status === 'ok' ? 'received' : 'error');
                 }
                 if (data?.status === 'error') {
-                    showToast(`${action}: ${data.message}`, 'error');
-                } else if (['INITIALIZE', 'START', 'STOW', 'ABORT'].includes(action)) {
-                    showToast(`${action}: ${data?.message || 'OK'}`, data?.status === 'ok' ? 'success' : 'warning');
+                    showToast(data.message, 'error');
+                } else if (data?.message) {
+                    showToast(data.message, data?.status === 'ok' ? 'success' : 'warning');
                 }
+                // Handle laser reading
+                if (data?.value !== undefined && data?.unit) {
+                    setLaserReading(data);
+                }
+
+                setLogs((prev) => [...prev, {
+                    timestamp: Date.now() / 1000,
+                    level: data?.status === 'ok' ? 'INFO' : 'ERROR',
+                    source: 'server',
+                    message: data?.message || JSON.stringify(data),
+                }]);
                 break;
+
             }
+            case 'load_app':
+                // Acknowledgment for load_app — task loaded on server
+                break;
             case 'log':
                 setLogs((prev) => {
                     const next = [...prev, message.data];
@@ -80,9 +94,18 @@ export function AppProvider({ children }) {
 
     const selectTask = useCallback((task) => {
         setCurrentTask(task);
-        sendCommand('SET_TASK', { task });
+        boltCounterRef.current = 0;
+        sendCommand('LOAD_APP', { app_name: TASK_APP_NAMES[task] || task });
         showToast(`Task: ${TASK_NAMES[task] || task}`, 'info');
     }, [sendCommand, showToast]);
+
+    // Wraps sendCommand for the Start button: sends bolt_config first, then start
+    const sendStartCommand = useCallback(() => {
+        boltCounterRef.current += 1;
+        const num = boltCounterRef.current;
+        sendCommand('BOLT_CONFIG', { boltNum: num, torqueNum: num });
+        return sendCommand('START');
+    }, [sendCommand]);
 
     const value = useMemo(() => ({
         robotStatus,
@@ -97,10 +120,11 @@ export function AppProvider({ children }) {
         setCurrentTask,
         selectTask,
         sendCommand,
+        sendStartCommand,
         consoleLines,
         addConsoleLine,
         taskNames: TASK_NAMES,
-    }), [robotStatus, tcpConnected, wsConnected, logs, toasts, showToast, laserReading, currentTask, selectTask, sendCommand, consoleLines, addConsoleLine]);
+    }), [robotStatus, tcpConnected, wsConnected, logs, toasts, showToast, laserReading, currentTask, selectTask, sendCommand, sendStartCommand, consoleLines, addConsoleLine]);
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

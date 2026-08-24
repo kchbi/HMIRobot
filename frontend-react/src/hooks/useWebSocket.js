@@ -5,15 +5,20 @@ const RECONNECT_BASE_DELAY = 2000;
 
 /**
  * Owns the single WebSocket connection to the backend and exposes
- * sendCommand()/message dispatch, mirroring the contract of the
- * original vanilla-JS App.sendCommand (id-matched promises, 15s timeout).
+ * sendCommand()/message dispatch.
+ *
+ * Protocol matches bolt_cli.py / ws_server.py:
+ *   Send:    {"type": "initialize"} or {"type": "move_x", "data": {"value": 1.0}}
+ *   Receive: {"type": "command_received", "data": {...}}
+ *            {"type": "update_state",    "data": {...}}
+ *
+ * Responses are matched via a FIFO queue (no id field).
  */
 export function useWebSocket(onMessage) {
     const [connected, setConnected] = useState(false);
     const wsRef = useRef(null);
     const reconnectAttemptsRef = useRef(0);
-    const commandIdRef = useRef(0);
-    const callbacksRef = useRef({});
+    const pendingRef = useRef([]);
     const onMessageRef = useRef(onMessage);
     onMessageRef.current = onMessage;
 
@@ -41,9 +46,10 @@ export function useWebSocket(onMessage) {
         ws.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                if (message.type === 'command_response' && message.id && callbacksRef.current[message.id]) {
-                    callbacksRef.current[message.id](message.data);
-                    delete callbacksRef.current[message.id];
+                // FIFO: resolve the oldest pending sendCommand Promise
+                if (message.type === 'command_received' && pendingRef.current.length) {
+                    const resolve = pendingRef.current.shift();
+                    resolve(message.data || {});
                 }
                 onMessageRef.current?.(message);
             } catch (e) {
@@ -89,14 +95,20 @@ export function useWebSocket(onMessage) {
             return Promise.resolve({ status: 'error', message: 'Not connected to server' });
         }
 
-        const id = ++commandIdRef.current;
-        ws.send(JSON.stringify({ action, params, id }));
+        // Build message matching bolt_cli.py format: {"type": "initialize"}
+        // Only include "data" key when params is non-empty
+        const msg = { type: action.toLowerCase() };
+        if (Object.keys(params).length) {
+            msg.data = params;
+        }
+        ws.send(JSON.stringify(msg));
 
         return new Promise((resolve) => {
-            callbacksRef.current[id] = resolve;
+            pendingRef.current.push(resolve);
             setTimeout(() => {
-                if (callbacksRef.current[id]) {
-                    delete callbacksRef.current[id];
+                const idx = pendingRef.current.indexOf(resolve);
+                if (idx !== -1) {
+                    pendingRef.current.splice(idx, 1);
                     resolve({ status: 'error', message: 'Timeout' });
                 }
             }, 15000);

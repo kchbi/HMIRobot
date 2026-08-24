@@ -9,7 +9,7 @@ import './MainPanelPage.css';
 
 export default function MainPanelPage() {
     const { task } = useParams();
-    const { robotStatus, tcpConnected, sendCommand } = useApp();
+    const { robotStatus, tcpConnected, sendCommand, sendStartCommand } = useApp();
 
     const progress = robotStatus.process_progress || 0;
     const initializing = robotStatus.robot_mode === 'INITIALIZING';
@@ -31,7 +31,7 @@ export default function MainPanelPage() {
                             key={btn.action}
                             className="hmi-btn ctrl-btn"
                             disabled={btn.disabled}
-                            onClick={() => sendCommand(btn.action)}
+                            onClick={() => btn.action === 'START' ? sendStartCommand() : sendCommand(btn.action)}
                         >
                             {btn.label}
                         </button>

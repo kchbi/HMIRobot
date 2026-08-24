@@ -90,7 +90,7 @@ async def broadcast(message: dict):
 
 async def on_robot_status_update(status: dict):
     """Callback when robot sends a status update."""
-    await broadcast({"type": "status_update", "data": status.get("data", status)})
+    await broadcast({"type": "update_state", "data": status.get("data", status)})
 
 
 # ─── Lifespan ───────────────────────────────────────────────────────────────
@@ -196,8 +196,8 @@ async def websocket_endpoint(ws: WebSocket):
     """
     Main WebSocket endpoint bridging browser ↔ robot TCP.
 
-    Browser sends JSON: {"action": "INITIALIZE", "params": {...}}
-    Server forwards to robot via TCP and relays the response.
+    Browser sends JSON: {"type": "initialize"} or {"type": "move_x", "data": {"value": 1.0}}
+    Server forwards to robot via TCP and relays the response as {"type": "command_received", ...}.
     """
     await ws.accept()
     connected_websockets.add(ws)
@@ -207,7 +207,7 @@ async def websocket_endpoint(ws: WebSocket):
     try:
         if tcp_client and tcp_client.connected:
             status = await tcp_client.send_command("GET_STATUS")
-            await ws.send_json({"type": "status_update", "data": status.get("data", status)})
+            await ws.send_json({"type": "update_state", "data": status.get("data", status)})
             await ws.send_json({"type": "connection", "data": {"tcp_connected": True}})
         else:
             await ws.send_json({"type": "connection", "data": {"tcp_connected": False}})
@@ -228,9 +228,8 @@ async def websocket_endpoint(ws: WebSocket):
                 await ws.send_json({"type": "error", "data": {"message": "Invalid JSON"}})
                 continue
 
-            action = message.get("action", "")
-            params = message.get("params", {})
-            request_id = message.get("id", None)
+            action = message.get("type", "").upper()  # normalize to uppercase internally
+            params = message.get("data", {})
 
             add_log("INFO", f"Command: {action} {params}", source="browser")
 
@@ -244,13 +243,10 @@ async def websocket_endpoint(ws: WebSocket):
                     tcp_client.update_config(host, port)
                     connected = await tcp_client.connect()
 
-                    response = {
-                        "type": "command_response",
-                        "action": action,
-                        "id": request_id,
-                        "data": {"connected": connected, "host": host, "port": port},
-                    }
-                    await ws.send_json(response)
+                    await ws.send_json({
+                        "type": "command_received",
+                        "data": {"status": "ok", "connected": connected, "host": host, "port": port},
+                    })
                     await broadcast({"type": "connection", "data": {"tcp_connected": connected}})
                     add_log(
                         "INFO" if connected else "WARN",
@@ -263,19 +259,45 @@ async def websocket_endpoint(ws: WebSocket):
                     await tcp_client.disconnect()
                     await broadcast({"type": "connection", "data": {"tcp_connected": False}})
                     add_log("INFO", "TCP disconnected by user")
+                await ws.send_json({
+                    "type": "command_received",
+                    "data": {"status": "ok", "message": "Disconnected"},
+                })
+                continue
+
+            # Handle load_app — maps to SET_TASK on the robot
+            if action == "LOAD_APP":
+                app_name = params.get("app_name", "")
+                # Map app names to internal task ids
+                task_map = {"TopPlateBolt": "bolt", "ChamberClean": "clean", "GelInstall": "gel"}
+                task = task_map.get(app_name, app_name)
+                if tcp_client:
+                    result = await tcp_client.send_command("SET_TASK", task=task)
+                    await ws.send_json({"type": "load_app", "data": result})
+                else:
+                    await ws.send_json({"type": "load_app", "data": {"status": "ok"}})
+                add_log("INFO", f"App loaded: {app_name} (task={task})")
+                continue
+
+            # Handle bolt_config — store config, acknowledge
+            if action == "BOLT_CONFIG":
+                bolt_num = params.get("boltNum")
+                torque_num = params.get("torqueNum")
+                add_log("INFO", f"Bolt config: boltNum={bolt_num}, torqueNum={torque_num}", source="browser")
+                await ws.send_json({
+                    "type": "command_received",
+                    "data": {"status": "ok", "message": f"Bolt config set: bolt={bolt_num}, torque={torque_num}"},
+                })
                 continue
 
             # Forward command to robot
             if tcp_client:
                 result = await tcp_client.send_command(action, **params)
 
-                response = {
-                    "type": "command_response",
-                    "action": action,
-                    "id": request_id,
+                await ws.send_json({
+                    "type": "command_received",
                     "data": result,
-                }
-                await ws.send_json(response)
+                })
 
                 # Log result
                 status = result.get("status", "unknown")
@@ -288,8 +310,6 @@ async def websocket_endpoint(ws: WebSocket):
             else:
                 await ws.send_json({
                     "type": "error",
-                    "action": action,
-                    "id": request_id,
                     "data": {"message": "TCP client not available"},
                 })
 
@@ -339,4 +359,4 @@ else:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
