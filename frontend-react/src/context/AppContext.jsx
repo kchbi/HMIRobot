@@ -20,6 +20,7 @@ export function AppProvider({ children }) {
     ]);
     const consoleIdRef = useRef(0);
     const boltCounterRef = useRef(0);
+    const pendingCommandsRef = useRef([]);
 
     const showToast = useCallback((message, type = 'info') => {
         const id = ++toastId;
@@ -42,11 +43,14 @@ export function AppProvider({ children }) {
             case 'connection': {
                 const connected = message.data?.tcp_connected;
                 setTcpConnected(!!connected);
-                if (connected) showToast('TCP connected to robot', 'success');
+                const msg = connected ? 'Connected to backend & robot' : 'Disconnected from robot';
+                if (connected) showToast(msg, 'success');
                 break;
             }
             case 'command_received': {
                 const data = message.data;
+                const commandName = pendingCommandsRef.current.shift();
+
                 if (data) {
                     const msg = data.message || JSON.stringify(data);
                     addConsoleLine(`← ${msg}`, data.status === 'ok' ? 'received' : 'error');
@@ -56,23 +60,64 @@ export function AppProvider({ children }) {
                 } else if (data?.message) {
                     showToast(data.message, data?.status === 'ok' ? 'success' : 'warning');
                 }
+
+                // Update robotStatus based on which command succeeded
+                if (data?.status === 'ok') {
+                    setTcpConnected(true);
+                    switch (commandName) {
+                        case 'initialize':
+                            setRobotStatus(prev => ({ ...prev, initialized: true, robot_mode: 'IDLE' }));
+                            break;
+                        case 'stow':
+                            setRobotStatus(prev => ({ ...prev, initialized: false, robot_mode: 'POWER_OFF', program_running: false }));
+                            break;
+                        case 'start':
+                            setRobotStatus(prev => ({ ...prev, program_running: true }));
+                            break;
+                        case 'connect':
+                            setTcpConnected(true);
+                            break;
+                        case 'disconnect':
+                            setTcpConnected(false);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
                 // Handle laser reading
                 if (data?.value !== undefined && data?.unit) {
                     setLaserReading(data);
                 }
 
-                setLogs((prev) => [...prev, {
-                    timestamp: Date.now() / 1000,
-                    level: data?.status === 'ok' ? 'INFO' : 'ERROR',
-                    source: 'server',
-                    message: data?.message || JSON.stringify(data),
-                }]);
-                break;
+                console.log('[WS-RECV]', JSON.stringify(message));
 
-            }
-            case 'load_app':
-                // Acknowledgment for load_app — task loaded on server
+                // Display exact raw JSON received from server in Logs
+                setLogs((prev) => {
+                    const next = [...prev, {
+                        timestamp: Date.now() / 1000,
+                        level: data?.status === 'error' ? 'ERROR' : 'INFO',
+                        source: 'server',
+                        message: JSON.stringify(message),
+                    }];
+                    return next.length > 1000 ? next.slice(next.length - 1000) : next;
+                });
                 break;
+            }
+            case 'load_app': {
+                console.log('[WS-RECV]', JSON.stringify(message));
+                // Display exact raw JSON received from server in Logs
+                setLogs((prev) => {
+                    const next = [...prev, {
+                        timestamp: Date.now() / 1000,
+                        level: 'INFO',
+                        source: 'server',
+                        message: JSON.stringify(message),
+                    }];
+                    return next.length > 1000 ? next.slice(next.length - 1000) : next;
+                });
+                break;
+            }
             case 'log':
                 setLogs((prev) => {
                     const next = [...prev, message.data];
@@ -84,13 +129,45 @@ export function AppProvider({ children }) {
                 break;
             case 'error':
                 showToast(message.data?.message || 'Server error', 'error');
+                setLogs((prev) => {
+                    const next = [...prev, {
+                        timestamp: Date.now() / 1000,
+                        level: 'ERROR',
+                        source: 'server',
+                        message: JSON.stringify(message),
+                    }];
+                    return next.length > 1000 ? next.slice(next.length - 1000) : next;
+                });
                 break;
             default:
                 break;
         }
     }, [showToast, addConsoleLine]);
 
-    const { connected: wsConnected, sendCommand } = useWebSocket(handleMessage);
+    const { connected: wsConnected, sendCommand: rawSendCommand } = useWebSocket(handleMessage);
+
+    const sendCommand = useCallback((action, params = {}) => {
+        const msg = { type: action.toLowerCase() };
+        if (Object.keys(params).length) {
+            msg.data = params;
+        }
+        const rawSent = JSON.stringify(msg);
+        console.log('[WS-SEND]', rawSent);
+
+        // Log exact raw sent JSON
+        setLogs((prev) => {
+            const next = [...prev, {
+                timestamp: Date.now() / 1000,
+                level: 'INFO',
+                source: 'client',
+                message: rawSent,
+            }];
+            return next.length > 1000 ? next.slice(next.length - 1000) : next;
+        });
+
+        pendingCommandsRef.current.push(action.toLowerCase());
+        return rawSendCommand(action, params);
+    }, [rawSendCommand]);
 
     const selectTask = useCallback((task) => {
         setCurrentTask(task);
