@@ -9,15 +9,22 @@ import './MainPanelPage.css';
 
 export default function MainPanelPage() {
     const { task } = useParams();
-    const { robotStatus, tcpConnected, sendCommand, sendStartCommand } = useApp();
+    const { robotStatus, tcpConnected, sendCommand } = useApp();
 
     const progress = robotStatus.process_progress || 0;
     const initializing = robotStatus.robot_mode === 'INITIALIZING';
     const programRunning = !!robotStatus.program_running;
+    const isStartDisabled = !robotStatus.initialized || programRunning;
+    console.log('[MainPanelPage State]', {
+        initialized: robotStatus.initialized,
+        programRunning,
+        isStartDisabled,
+        robotStatus
+    });
 
     const CONTROLS = [
         { action: 'INITIALIZE', label: 'Initialize', disabled: initializing },
-        { action: 'START', label: 'Start', disabled: !robotStatus.initialized || programRunning },
+        { action: 'START', label: 'Start', disabled: isStartDisabled },
         { action: 'STOW', label: 'Stow', disabled: programRunning },
     ];
 
@@ -31,7 +38,7 @@ export default function MainPanelPage() {
                             key={btn.action}
                             className="hmi-btn ctrl-btn"
                             disabled={btn.disabled}
-                            onClick={() => btn.action === 'START' ? sendStartCommand() : sendCommand(btn.action)}
+                            onClick={() => sendCommand(btn.action)}
                         >
                             {btn.label}
                         </button>

@@ -5,26 +5,24 @@ const RECONNECT_BASE_DELAY = 2000;
 
 /**
  * Owns the single WebSocket connection to the backend and exposes
- * sendCommand()/message dispatch.
+ * sendCommand() / message dispatch.
  *
- * Protocol matches bolt_cli.py / ws_server.py:
- *   Send:    {"type": "initialize"} or {"type": "move_x", "data": {"value": 1.0}}
- *   Receive: {"type": "command_received", "data": {...}}
- *            {"type": "update_state",    "data": {...}}
+ * Protocol (matches real ws_server.py):
+ *   Send:    {"type": "initialize"} or {"type": "load_app", "data": {"app_name": "TopPlateBolt"}}
+ *   Receive: {"type": "command_received", "data": "1"}   ← data code identifies the command
+ *            {"type": "update_state",     "data": {...}}
+ *            {"type": "load_app",         "data": {...}}
  *
- * Responses are matched via a FIFO queue (no id field).
+ * No FIFO queue — responses are matched by their data code, not by send order.
  */
 export function useWebSocket(onMessage) {
     const [connected, setConnected] = useState(false);
     const wsRef = useRef(null);
     const reconnectAttemptsRef = useRef(0);
-    const pendingRef = useRef([]);
     const onMessageRef = useRef(onMessage);
     onMessageRef.current = onMessage;
 
     const connect = useCallback(() => {
-        // In dev (Vite proxy): connects to ws://localhost:5173/ws → proxied to backend
-        // In production build: uses VITE_WS_URL env var to connect directly to backend
         const wsUrl = import.meta.env.VITE_WS_URL
             || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
@@ -46,11 +44,8 @@ export function useWebSocket(onMessage) {
         ws.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                // FIFO: resolve the oldest pending sendCommand Promise
-                if (message.type === 'command_received' && pendingRef.current.length) {
-                    const resolve = pendingRef.current.shift();
-                    resolve(message.data || {});
-                }
+                // Dispatch every message to AppContext.handleMessage
+                // No FIFO queue — response matching is done by data code in AppContext
                 onMessageRef.current?.(message);
             } catch (e) {
                 console.error('[WS] Failed to parse message:', e);
@@ -89,30 +84,23 @@ export function useWebSocket(onMessage) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    /**
+     * Fire-and-forget: sends the command over WebSocket.
+     * Does NOT return a Promise that waits for a response.
+     * Response handling is done in AppContext.handleMessage via data code matching.
+     */
     const sendCommand = useCallback((action, params = {}) => {
         const ws = wsRef.current;
         if (!ws || ws.readyState !== WebSocket.OPEN) {
-            return Promise.resolve({ status: 'error', message: 'Not connected to server' });
+            console.warn('[WS] Not connected, cannot send:', action);
+            return;
         }
 
-        // Build message matching bolt_cli.py format: {"type": "initialize"}
-        // Only include "data" key when params is non-empty
         const msg = { type: action.toLowerCase() };
         if (Object.keys(params).length) {
             msg.data = params;
         }
         ws.send(JSON.stringify(msg));
-
-        return new Promise((resolve) => {
-            pendingRef.current.push(resolve);
-            setTimeout(() => {
-                const idx = pendingRef.current.indexOf(resolve);
-                if (idx !== -1) {
-                    pendingRef.current.splice(idx, 1);
-                    resolve({ status: 'error', message: 'Timeout' });
-                }
-            }, 15000);
-        });
     }, []);
 
     return { connected, sendCommand };

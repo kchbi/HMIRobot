@@ -2,7 +2,11 @@ import { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import './AdvancedPage.css';
 
-const COMMANDS = ['GET_STATUS', 'INITIALIZE', 'START', 'STOW', 'ABORT', 'HOME', 'READ_LASER', 'GET_PROGRESS'];
+const COMMANDS = [
+    'TURN_ROBOT_ON', 'TURN_ROBOT_OFF', 'RELEASE_BRAKES',
+    'INITIALIZE', 'START', 'PAUSE', 'ABORT', 'STOW',
+    'LOAD_APP', 'SHUTDOWN', 'GET_STATUS',
+];
 
 export default function AdvancedPage() {
     const { sendCommand, wsConnected, tcpConnected, currentTask, taskNames, consoleLines, addConsoleLine, showToast } = useApp();

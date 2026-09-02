@@ -46,136 +46,49 @@ logger = logging.getLogger("mock_ws_server")
 # You can set delay to 0.5, 2.0, 5.0, 10.0, etc.
 
 COMMAND_CONFIG: Dict[str, Dict[str, Any]] = {
+    "turn_robot_off": {
+        "delay": 1.0,
+        "response": {"type": "command_received", "data": "5"},
+    },
+    "turn_robot_on": {
+        "delay": 1.0,
+        "response": {"type": "command_received", "data": "6"},
+    },
+    "release_brakes": {
+        "delay": 1.5,
+        "response": {"type": "command_received", "data": "0"},
+    },
     "initialize": {
-        "delay": 2.0,  # Simulated delay for robot initialization
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Robot initialized and ready"},
-        },
-    },
-    "load_app": {
-        "delay": 0.5,
-        "response": {
-            "type": "load_app",
-            "data": {"status": "ok", "message": "Application loaded successfully"},
-        },
-    },
-    "bolt_config": {
-        "delay": 5,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Bolt configuration updated"},
-        },
+        "delay": 2.0,
+        "response": {"type": "command_received", "data": "1"},
     },
     "start": {
         "delay": 0.5,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Process started"},
-        },
+        "response": {"type": "command_received", "data": "2"},
     },
-    "stow": {
-        "delay": 2.5,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Robot moved to stow position"},
-        },
+    "pause": {
+        "delay": 0.1,
+        "response": {"type": "command_received", "data": "3"},
     },
     "abort": {
         "delay": 0.1,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Operation aborted"},
-        },
+        "response": {"type": "command_received", "data": "5"},
     },
-    "stop": {
-        "delay": 0.1,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Motion stopped"},
-        },
+    "stow": {
+        "delay": 2.5,
+        "response": {"type": "command_received", "data": "4"},
     },
-    "home": {
-        "delay": 2.0,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Robot homed"},
-        },
-    },
-    "move_x": {
-        "delay": 0.1,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Moved X"},
-        },
-    },
-    "move_y": {
-        "delay": 0.1,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Moved Y"},
-        },
-    },
-    "move_z": {
-        "delay": 0.1,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Moved Z"},
-        },
-    },
-    "read_laser": {
-        "delay": 1.5,
-        "response": {
-            "type": "command_received",
-            "data": {
-                "status": "ok",
-                "value": 45.2,
-                "unit": "mm",
-                "message": "Laser reading complete: 45.2 mm",
-            },
-        },
-    },
-    "set_calibration": {
-        "delay": 1.0,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Calibration point saved"},
-        },
-    },
-    "go_calibration": {
-        "delay": 2.0,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Moved to calibration point"},
-        },
-    },
-    "update_laser_tcp": {
-        "delay": 1.0,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Laser TCP offset updated"},
-        },
-    },
-    "connect": {
+    "load_app": {
         "delay": 0.5,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "connected": True, "message": "Connected"},
-        },
+        "response": {"type": "load_app", "data": {"status": "ok", "message": "Application loaded"}},
     },
-    "disconnect": {
-        "delay": 0.1,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Disconnected"},
-        },
+    "shutdown": {
+        "delay": 1.0,
+        "response": {"type": "command_received", "data": ""},
     },
     "get_status": {
         "delay": 0.05,
-        "response": {
-            "type": "command_received",
-            "data": {"status": "ok", "message": "Status OK"},
-        },
+        "response": {"type": "command_received", "data": ""},
     },
 }
 
@@ -266,8 +179,8 @@ class MockRobotState:
         try:
             self.program_running = True
             self.current_command = "BOLTING_SEQUENCE"
-            total_bolts = 40
-            await log_fn("INFO", "Bolting process sequence started across 40 bolts", "robot")
+            total_bolts = 24  # Matches the 24 visual markers on the plate layout
+            await log_fn("INFO", f"Bolting process sequence started across {total_bolts} bolts", "robot")
 
             for bolt_idx in range(1, total_bolts + 1):
                 self.active_bolt = bolt_idx
@@ -276,14 +189,14 @@ class MockRobotState:
                 await broadcast_fn(self.get_status_payload())
 
                 # Simulate tool movement & bolting torque pass (0.4s per bolt)
-                await asyncio.sleep(0.4)
+                await asyncio.sleep(30.0)
 
-                torque_pass = random.choice([1, 2])
+                torque_val = random.choice([20, 40, 60])  # Matches TORQUE_COLORS (20 lb-in, 40 lb-in, 60 lb-in)
                 self.bolt_positions[bolt_idx]["status"] = "complete"
-                self.bolt_positions[bolt_idx]["torque"] = torque_pass
+                self.bolt_positions[bolt_idx]["torque"] = torque_val
                 self.process_progress = bolt_idx / total_bolts * 100.0
                 await broadcast_fn(self.get_status_payload())
-                await log_fn("INFO", f"Torqued bolt #{bolt_idx} (Pass {torque_pass})", "robot")
+                await log_fn("INFO", f"Torqued bolt #{bolt_idx} ({torque_val} lb-in)", "robot")
 
             self.program_running = False
             self.current_command = "SEQUENCE_COMPLETE"
@@ -345,11 +258,12 @@ class MockWebSocketServer:
         self.connected_clients.difference_update(dead)
 
     async def _periodic_status_loop(self):
-        """Broadcasts status update every 1 second."""
+        """Broadcasts status update every 1 second ONLY while a program is actively running."""
         while True:
             try:
                 await asyncio.sleep(1.0)
-                await self.broadcast(self.robot.get_status_payload())
+                if self.robot.program_running:
+                    await self.broadcast(self.robot.get_status_payload())
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -362,8 +276,7 @@ class MockWebSocketServer:
         logger.info(f"Client connected: {client_addr} (Total clients: {len(self.connected_clients)})")
 
         try:
-            # 1. Send initial state, connection status, and log history
-            await websocket.send(json.dumps(self.robot.get_status_payload()))
+            # 1. Send connection status and log history (no update_state until program runs)
             await websocket.send(json.dumps({"type": "connection", "data": {"tcp_connected": True}}))
             await websocket.send(json.dumps({"type": "log_history", "data": self.log_history[-100:]}))
 
@@ -390,16 +303,22 @@ class MockWebSocketServer:
                 # Send reply back to the requesting client
                 if response_msg:
                     await websocket.send(json.dumps(response_msg))
-                    resp_msg_text = response_msg.get("data", {}).get("message", "OK")
-                    resp_status = response_msg.get("data", {}).get("status", "ok")
+                    raw_data = response_msg.get("data")
+                    if isinstance(raw_data, dict):
+                        resp_msg_text = raw_data.get("message", "OK")
+                        resp_status = raw_data.get("status", "ok")
+                    else:
+                        resp_msg_text = f"Code {raw_data}"
+                        resp_status = "ok"
                     await self.add_log(
                         "INFO" if resp_status == "ok" else "ERROR",
                         f"Response [{cmd_type.upper()}]: {resp_msg_text}",
                         "robot",
                     )
 
-                # Immediately broadcast updated state to all connected clients
-                await self.broadcast(self.robot.get_status_payload())
+                # Broadcast updated state ONLY if program is currently running
+                if self.robot.program_running:
+                    await self.broadcast(self.robot.get_status_payload())
 
         except websockets.exceptions.ConnectionClosed:
             logger.info(f"Client disconnected: {client_addr}")
@@ -426,7 +345,7 @@ class MockWebSocketServer:
         if cmd_type == "initialize":
             self.robot.robot_mode = "INITIALIZING"
             self.robot.current_command = "INITIALIZING"
-            await self.broadcast(self.robot.get_status_payload())
+            # Real backend does not send update_state on initialize; only sends command_received
 
         elif cmd_type == "load_app":
             app_name = data.get("app_name", "TopPlateBolt")
@@ -450,6 +369,24 @@ class MockWebSocketServer:
         elif cmd_type in ("abort", "stop"):
             self.robot.stop_process()
             self.robot.current_command = "STOPPED"
+
+        elif cmd_type == "connect":
+            self.robot.connected = True
+            await self.broadcast({"type": "connection", "data": {"tcp_connected": True}})
+            return {
+                "type": "command_received",
+                "data": {"status": "ok", "connected": True, "message": "Connected to robot"},
+            }
+
+        elif cmd_type == "disconnect":
+            self.robot.connected = False
+            self.robot.initialized = False
+            self.robot.robot_mode = "POWER_OFF"
+            await self.broadcast({"type": "connection", "data": {"tcp_connected": False}})
+            return {
+                "type": "command_received",
+                "data": {"status": "ok", "connected": False, "message": "Disconnected from robot"},
+            }
 
         elif cmd_type == "stow":
             self.robot.stop_process()

@@ -7,14 +7,15 @@ import './BoltPlateVisual.css';
 const IN_PROGRESS_FALLBACK = '#f59e0b';
 
 function markerColor(bolt, active) {
-    // The controller can name a bolt in `active_bolt` a poll before its entry in
-    // `bolt_positions` flips to in_progress; light it anyway so the blink is not
-    // swallowed by a marker that renders as nothing.
     if (!bolt) return active ? IN_PROGRESS_FALLBACK : null;
-    // Torque colour is the base layer and always wins when the robot reported one,
-    // so an active bolt still shows which torque category it belongs to.
-    const torqueColor = TORQUE_COLORS[bolt.torque] || null;
-    if (bolt.status === 'complete') return torqueColor;
+    const torqueVal = bolt.torque ?? bolt.torque_id;
+    // Support 20/40/60 lb-in, or pass 1/2, or default to green for complete
+    const torqueColor = TORQUE_COLORS[torqueVal]
+        || (torqueVal === 1 ? TORQUE_COLORS[40] : null)
+        || (torqueVal === 2 ? TORQUE_COLORS[60] : null)
+        || null;
+
+    if (bolt.status === 'complete') return torqueColor || '#22c55e'; // Default to green on complete!
     if (bolt.status === 'in_progress' || active) return torqueColor || IN_PROGRESS_FALLBACK;
     return null;
 }
