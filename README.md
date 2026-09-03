@@ -6,6 +6,29 @@ Built with **React 19 + Vite** on the frontend, **FastAPI + WebSockets** on the 
 
 ---
 
+---
+
+## 📡 Command Protocols & Data Architecture
+
+For an in-depth breakdown of the wire protocol, command schemas, code mappings, live telemetry, and traffic storage locations, please read:
+
+👉 **[Complete Command Protocol Documentation](file:///home/adi/Desktop/GUIRev2/COMMAND_PROTOCOL.md)**
+
+### Key Protocol Quick Reference:
+| Command | Outbound Payload | Response Code | Description |
+| :--- | :--- | :--- | :--- |
+| `turn_robot_off` | `None` | `"5"` | Powers down robot |
+| `turn_robot_on` | `None` | `"6"` | Powers on robot controller |
+| `release_brakes` | `None` | `"0"` | Releases joint brakes |
+| `initialize` | `None` | `"1"` | Homes robot, unlocks Start button |
+| `start` | `None` | `"2"` | Starts bolting cycle & telemetry stream |
+| `pause` | `None` | `"3"` | Pauses active cycle |
+| `abort` | `None` | `"5"` | Emergency stop active process |
+| `stow` | `None` | `"4"` | Moves arm to parking position |
+| `load_app` | `{"app_name": "..."}` | *app data* | Loads recipe |
+| `connect` | `{"host": "...", "port": ...}`| `{"connected": true}` | Connects to hardware |
+| `disconnect` | `None` | `{"connected": false}`| Disconnects from hardware |
+
 ## 📋 System Prerequisites
 
 Before running this application, you need **Python 3** and **Node.js** installed on your system.

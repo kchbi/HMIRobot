@@ -12,20 +12,32 @@ export default function MainPanelPage() {
     const { robotStatus, tcpConnected, sendCommand } = useApp();
 
     const progress = robotStatus.process_progress || 0;
-    const initializing = robotStatus.robot_mode === 'INITIALIZING';
+    const isInitialized = !!robotStatus.initialized;
     const programRunning = !!robotStatus.program_running;
-    const isStartDisabled = !robotStatus.initialized || programRunning;
+    const initializing = robotStatus.robot_mode === 'INITIALIZING';
+
+    // 1. Initialize: Enabled only when NOT initialized and NOT running
+    const isInitializeDisabled = isInitialized || initializing || programRunning;
+
+    // 2. Start: Enabled only when initialized and NOT running
+    const isStartDisabled = !isInitialized || programRunning;
+
+    // 3. Stow: Enabled when initialized or actively running (can stow from idle or running)
+    // Disabled only when already stowed / uninitialized and not running
+    const isStowDisabled = !isInitialized && !programRunning;
+
     console.log('[MainPanelPage State]', {
-        initialized: robotStatus.initialized,
+        isInitialized,
         programRunning,
+        isInitializeDisabled,
         isStartDisabled,
-        robotStatus
+        isStowDisabled,
     });
 
     const CONTROLS = [
-        { action: 'INITIALIZE', label: 'Initialize', disabled: initializing },
+        { action: 'INITIALIZE', label: 'Initialize', disabled: isInitializeDisabled },
         { action: 'START', label: 'Start', disabled: isStartDisabled },
-        { action: 'STOW', label: 'Stow', disabled: programRunning },
+        { action: 'STOW', label: 'Stow', disabled: isStowDisabled },
     ];
 
     return (

@@ -42,7 +42,8 @@ export default function BoltPlateVisual({ boltPositions, activeBolt = null, bolt
 
     // Ids arrive as numbers in `active_bolt` but as object keys (strings) in
     // `bolt_positions` — compare as strings so the marker is found either way.
-    const reported = activeBolt === null || activeBolt === undefined ? null : String(activeBolt);
+    // A bolt only pulses if the robot is actively bolting.
+    const reported = (bolting && activeBolt !== null && activeBolt !== undefined) ? String(activeBolt) : null;
     const activeId = reported
         || (bolting
             ? Object.keys(bolts).find((id) => bolts[id]?.status === 'in_progress') || null

@@ -80,7 +80,13 @@ COMMAND_CONFIG: Dict[str, Dict[str, Any]] = {
     },
     "load_app": {
         "delay": 0.5,
-        "response": {"type": "load_app", "data": {"status": "ok", "message": "Application loaded"}},
+        "response": {
+            "type": "load_app",
+            "data": {
+                "app_name": "TopPlateBolt",
+                "app_data": "Application 'TopPlateBolt' loaded",
+            },
+        },
     },
     "shutdown": {
         "delay": 1.0,
@@ -354,6 +360,13 @@ class MockWebSocketServer:
             self.robot.process_progress = 0.0
             self.robot._reset_bolts()
             logger.info(f"Loaded app: '{app_name}' (task='{self.robot.active_task}')")
+            return {
+                "type": "load_app",
+                "data": {
+                    "app_name": app_name,
+                    "app_data": f"Application '{app_name}' loaded",
+                },
+            }
 
         elif cmd_type == "bolt_config":
             bolt_num = data.get("boltNum", 1)
@@ -391,6 +404,11 @@ class MockWebSocketServer:
         elif cmd_type == "stow":
             self.robot.stop_process()
             self.robot.current_command = "STOWED"
+            self.robot.initialized = False
+            self.robot.robot_mode = "POWER_OFF"
+            self.robot.active_bolt = None
+            self.robot.process_progress = 0.0
+            self.robot._reset_bolts()
             self.robot.x = 0.0
             self.robot.y = 0.0
             self.robot.z = 0.0
@@ -435,7 +453,8 @@ class MockWebSocketServer:
         # Inject dynamic data into response if applicable
         if cmd_type == "load_app":
             app_name = data.get("app_name", "TopPlateBolt")
-            response["data"]["message"] = f"Application '{app_name}' loaded"
+            response["data"]["app_name"] = f"Application '{app_name}' loaded"
+            response["data"]["app_data"] = f"Task Done"
         elif cmd_type == "bolt_config":
             response["data"]["message"] = f"Bolt config set: bolt={data.get('boltNum')}, torque={data.get('torqueNum')}"
         elif cmd_type == "read_laser":

@@ -83,7 +83,15 @@ export function AppProvider({ children }) {
                 // Update robotStatus based on which command was acknowledged
                 switch (commandName) {
                     case 'initialize':
-                        setRobotStatus(prev => ({ ...prev, initialized: true, robot_mode: 'IDLE' }));
+                        setRobotStatus(prev => ({
+                            ...prev,
+                            initialized: true,
+                            robot_mode: 'IDLE',
+                            program_running: false,
+                            active_bolt: null,
+                            process_progress: 0,
+                            bolt_positions: {},
+                        }));
                         break;
                     case 'release_brakes':
                         setRobotStatus(prev => ({ ...prev, brakes_released: true }));
@@ -92,7 +100,16 @@ export function AppProvider({ children }) {
                         setRobotStatus(prev => ({ ...prev, robot_on: true, robot_mode: 'IDLE' }));
                         break;
                     case 'turn_robot_off':
-                        setRobotStatus(prev => ({ ...prev, robot_on: false, initialized: false, robot_mode: 'POWER_OFF', program_running: false }));
+                        setRobotStatus(prev => ({
+                            ...prev,
+                            robot_on: false,
+                            initialized: false,
+                            robot_mode: 'POWER_OFF',
+                            program_running: false,
+                            active_bolt: null,
+                            process_progress: 0,
+                            bolt_positions: {},
+                        }));
                         break;
                     case 'start':
                         setRobotStatus(prev => ({ ...prev, program_running: true }));
@@ -101,11 +118,27 @@ export function AppProvider({ children }) {
                         setRobotStatus(prev => ({ ...prev, program_running: false }));
                         break;
                     case 'stow':
-                        setRobotStatus(prev => ({ ...prev, initialized: false, robot_mode: 'POWER_OFF', program_running: false }));
+                        setRobotStatus(prev => ({
+                            ...prev,
+                            initialized: false,
+                            robot_mode: 'POWER_OFF',
+                            program_running: false,
+                            active_bolt: null,
+                            process_progress: 0,
+                            bolt_positions: {},
+                        }));
                         break;
                     case 'disconnect':
                         setTcpConnected(false);
-                        setRobotStatus(prev => ({ ...prev, initialized: false, robot_mode: 'POWER_OFF', program_running: false }));
+                        setRobotStatus(prev => ({
+                            ...prev,
+                            initialized: false,
+                            robot_mode: 'POWER_OFF',
+                            program_running: false,
+                            active_bolt: null,
+                            process_progress: 0,
+                            bolt_positions: {},
+                        }));
                         break;
                     default:
                         break;
@@ -131,6 +164,13 @@ export function AppProvider({ children }) {
                 break;
             }
             case 'load_app': {
+                const appName = message.data?.app_name || '';
+                const appData = message.data?.app_data;
+                const msgText = typeof appData === 'string' ? appData : JSON.stringify(appData || '');
+                if (appName) {
+                    addConsoleLine(`← load_app: ${appName} (${msgText})`, 'received');
+                    showToast(`Loaded ${appName}`, 'success');
+                }
                 console.log('[WS-RECV]', JSON.stringify(message));
                 setLogs((prev) => {
                     const next = [...prev, {
