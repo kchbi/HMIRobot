@@ -60,3 +60,22 @@ export const TORQUE_LEGEND = [
     { torque: 40, label: '40 lb-in' },
     { torque: 60, label: '60 lb-in' },
 ];
+
+/** Real robot pass color mapping matching ws_server.py color_match() */
+export const BOLT_TORQUE_COLORS = {
+    lawngreen: '#7cfc00', // Pass 4-5 (Complete)
+    yellow: '#eab308',    // Pass 3
+    orange: '#f97316',    // Pass 2
+    red: '#ef4444',       // Pass 1
+    indigo: '#6366f1',    // Pass 0
+    white: '#ffffff',     // Untightened
+};
+
+export const BOLT_PASS_LEGEND = [
+    { color: '#7cfc00', label: 'Pass 4–5' },
+    { color: '#eab308', label: 'Pass 3' },
+    { color: '#f97316', label: 'Pass 2' },
+    { color: '#ef4444', label: 'Pass 1' },
+    { color: '#6366f1', label: 'Pass 0' },
+    { color: '#ffffff', label: 'Pending' },
+];

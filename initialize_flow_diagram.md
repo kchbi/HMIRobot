@@ -60,7 +60,7 @@ sequenceDiagram
 
 ## 2. Button Interlock State Machine
 
-The control buttons (`Initialize`, `Start`, `Stow`) transition strictly according to this truth table in [`MainPanelPage.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/pages/MainPanelPage.jsx#L14-L35):
+The control buttons (`Initialize`, `Start`, `Stow`) transition strictly according to this truth table in [`MainPanelPage.jsx`](frontend-react/src/pages/MainPanelPage.jsx#L14-L35):
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────────┐
@@ -101,7 +101,7 @@ The control buttons (`Initialize`, `Start`, `Stow`) transition strictly accordin
 
 ### Step 1: User Clicks "Initialize"
 
-**File:** [`MainPanelPage.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/pages/MainPanelPage.jsx)
+**File:** [`MainPanelPage.jsx`](frontend-react/src/pages/MainPanelPage.jsx)
 
 ```jsx
 const isInitialized = !robotStatus.initialized;
@@ -133,7 +133,7 @@ const CONTROLS = [
 
 ### Step 2: AppContext.sendCommand() — Outbound Logging & Dispatch
 
-**File:** [`AppContext.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/context/AppContext.jsx#L161-L181)
+**File:** [`AppContext.jsx`](frontend-react/src/context/AppContext.jsx#L161-L181)
 
 ```jsx
 const sendCommand = useCallback((action, params = {}) => {
@@ -164,7 +164,7 @@ const sendCommand = useCallback((action, params = {}) => {
 
 ### Step 3: useWebSocket.js — Direct Wire Send
 
-**File:** [`useWebSocket.js`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/hooks/useWebSocket.js#L92-L104)
+**File:** [`useWebSocket.js`](frontend-react/src/hooks/useWebSocket.js#L92-L104)
 
 ```jsx
 const sendCommand = useCallback((action, params = {}) => {
@@ -191,7 +191,7 @@ const sendCommand = useCallback((action, params = {}) => {
 
 ### Step 4: Backend Execution & Single Response
 
-**File:** [`backend/mock_ws_server.py`](file:///home/adi/Desktop/GUIRev2/backend/mock_ws_server.py)
+**File:** [`backend/mock_ws_server.py`](backend/mock_ws_server.py)
 
 ```python
 elif cmd_type == "initialize":
@@ -213,7 +213,7 @@ The server finishes initialization and emits **only one frame**:
 
 ### Step 5: Inbound Dispatch & State Mutation
 
-**File:** [`AppContext.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/context/AppContext.jsx#L68-L115)
+**File:** [`AppContext.jsx`](frontend-react/src/context/AppContext.jsx#L68-L115)
 
 ```jsx
 case 'command_received': {
@@ -257,15 +257,15 @@ case 'command_received': {
    * **`Start`**: `!isInitialized` becomes `false` ➔ **ENABLED**.
    * **`Stow`**: `!isInitialized && !programRunning` becomes `false` ➔ **ENABLED**.
    * **`Initialize`**: `isInitialized` becomes `true` ➔ **DISABLED**.
-2. **Plate Visualizer ([`BoltPlateVisual.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/components/BoltPlateVisual.jsx)):**
+2. **Plate Visualizer ([`BoltPlateVisual.jsx`](frontend-react/src/components/BoltPlateVisual.jsx)):**
    * Active bolt pulsing is strictly gated:
      ```javascript
      const reported = (bolting && activeBolt !== null) ? String(activeBolt) : null;
      ```
    * Because `bolting` (`programRunning`) is `false`, **no halo rings pulse**. The plate remains clean and ready for execution.
-3. **Header Indicator ([`Header.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/components/Header.jsx)):**
+3. **Header Indicator ([`Header.jsx`](frontend-react/src/components/Header.jsx)):**
    * `tcpConnected === true` ➔ Green status dot.
-4. **Logs Tab ([`LogsPage.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/pages/LogsPage.jsx)):**
+4. **Logs Tab ([`LogsPage.jsx`](frontend-react/src/pages/LogsPage.jsx)):**
    * Displays the paired entries:
      ```text
      [client]  {"type":"initialize"}

@@ -9,12 +9,11 @@ const VALID_TASKS = ['bolt', 'clean', 'gel'];
 
 export default function TaskLayout() {
     const { task } = useParams();
-    const { currentTask, setCurrentTask, sendCommand } = useApp();
+    const { currentTask, selectTask } = useApp();
 
     useEffect(() => {
         if (task && task !== currentTask) {
-            setCurrentTask(task);
-            sendCommand('SET_TASK', { task });
+            selectTask(task);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [task]);

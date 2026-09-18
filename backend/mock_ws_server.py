@@ -27,7 +27,7 @@ from typing import Dict, Any, Set, Optional, List
 
 try:
     import websockets
-    from websockets.server import serve
+    from websockets.asyncio.server import serve
 except ImportError:
     print("Error: 'websockets' library is required. Install it using:")
     print("    pip install websockets")
@@ -48,35 +48,35 @@ logger = logging.getLogger("mock_ws_server")
 COMMAND_CONFIG: Dict[str, Dict[str, Any]] = {
     "turn_robot_off": {
         "delay": 1.0,
-        "response": {"type": "command_received", "data": "5"},
+        "response": {"type": "command_received", "data": 6},
     },
     "turn_robot_on": {
         "delay": 1.0,
-        "response": {"type": "command_received", "data": "6"},
+        "response": {"type": "command_received", "data": 7},
     },
     "release_brakes": {
         "delay": 1.5,
-        "response": {"type": "command_received", "data": "0"},
+        "response": {"type": "command_received", "data": 0},
     },
     "initialize": {
         "delay": 2.0,
-        "response": {"type": "command_received", "data": "1"},
+        "response": {"type": "command_received", "data": 1},
     },
     "start": {
         "delay": 0.5,
-        "response": {"type": "command_received", "data": "2"},
+        "response": {"type": "command_received", "data": 2},
     },
     "pause": {
         "delay": 0.1,
-        "response": {"type": "command_received", "data": "3"},
+        "response": {"type": "command_received", "data": 3},
     },
     "abort": {
         "delay": 0.1,
-        "response": {"type": "command_received", "data": "5"},
+        "response": {"type": "command_received", "data": 4},
     },
     "stow": {
         "delay": 2.5,
-        "response": {"type": "command_received", "data": "4"},
+        "response": {"type": "command_received", "data": 5},
     },
     "load_app": {
         "delay": 0.5,
@@ -88,6 +88,13 @@ COMMAND_CONFIG: Dict[str, Dict[str, Any]] = {
             },
         },
     },
+    "bolt_config": {
+        "delay": 0.1,
+        "response": {
+            "type": "command_received",
+            "data": {"status": "ok", "message": "Bolt config set"},
+        },
+    },
     "shutdown": {
         "delay": 1.0,
         "response": {"type": "command_received", "data": ""},
@@ -95,6 +102,18 @@ COMMAND_CONFIG: Dict[str, Dict[str, Any]] = {
     "get_status": {
         "delay": 0.05,
         "response": {"type": "command_received", "data": ""},
+    },
+    "cda_popup": {
+        "delay": 0.05,
+        "response": {"type": "cda_popup", "data": True},
+    },
+    "get_bolt_torque": {
+        "delay": 0.05,
+        "response": {"type": "get_bolt_torque", "data": []},
+    },
+    "get_bolt_status": {
+        "delay": 0.05,
+        "response": {"type": "get_bolt_status", "data": []},
     },
 }
 
@@ -109,10 +128,18 @@ class MockRobotState:
 
     def __init__(self):
         self.connected = True
-        self.robot_mode = "POWER_OFF"  # POWER_OFF, INITIALIZING, RUNNING, IDLE
+        self.robot_mode = "RUNNING"  # Real robot controller mode: RUNNING, INITIALIZING, POWER_OFF, IDLE
         self.current_command = "NO COMMAND"
         self.program_running = False
         self.safety_status = "NORMAL"
+        self.application_state = None
+        self.robot_model = None
+        self.robot_firmware_version = None
+        self.polyscope_version = None
+        self.serial_number = None
+        self.remote_control = False
+        self.cda_status = True
+        self.cda_popup = True
         self.initialized = False
 
         # Cartesian Position (X, Y, Z in mm)
@@ -137,20 +164,54 @@ class MockRobotState:
         self.active_bolt: Optional[int] = None
         self._process_task: Optional[asyncio.Task] = None
 
-        # 40 Bolts initialization
+        # 24/40 Bolts initialization & real robot bolt_torque color array
         self.bolt_positions = {}
+        self.bolt_torque = ["white"] * 24
         self._reset_bolts()
 
+    def color_match(self, passes: int) -> str:
+        """Matches passes count to real robot color name."""
+        match passes:
+            case 5:
+                return "lawngreen"
+            case 4:
+                return "lawngreen"
+            case 3:
+                return "yellow"
+            case 2:
+                return "orange"
+            case 1:
+                return "red"
+            case 0:
+                return "indigo"
+            case _:
+                return "white"
+
     def _reset_bolts(self):
+        self.bolt_torque = ["white"] * 24
         for i in range(1, 41):
             self.bolt_positions[i] = {
                 "status": "pending",  # pending, in_progress, complete
                 "torque": 0,
+                "color": "white",
             }
 
     def get_status_payload(self) -> Dict[str, Any]:
-        """Constructs the standard update_state message payload."""
+        """Constructs the standard update_state message payload matching the real robot backend."""
         data = {
+            # Real backend exact camelCase schema
+            "robotMode": self.robot_mode,
+            "programIsRunning": self.program_running,
+            "safetyStatus": self.safety_status,
+            "applicationState": self.application_state,
+            "currentCommand": self.current_command,
+            "robotModel": self.robot_model,
+            "robotFirmwareVersion": self.robot_firmware_version,
+            "polyscopeVersion": self.polyscope_version,
+            "serialNumber": self.serial_number,
+            "remoteControl": self.remote_control,
+            "cdaStatus": self.cda_status,
+            # Backward compatibility / simulation fields
             "connected": self.connected,
             "robot_mode": self.robot_mode,
             "current_command": self.current_command,
@@ -194,15 +255,22 @@ class MockRobotState:
                 self.process_progress = (bolt_idx - 0.5) / total_bolts * 100.0
                 await broadcast_fn(self.get_status_payload())
 
-                # Simulate tool movement & bolting torque pass (0.4s per bolt)
-                await asyncio.sleep(30.0)
+                # Simulate tool movement & bolting torque pass (1.5s per bolt)
+                await asyncio.sleep(1.5)
 
-                torque_val = random.choice([20, 40, 60])  # Matches TORQUE_COLORS (20 lb-in, 40 lb-in, 60 lb-in)
+                passes = random.choice([4, 5, 3, 2])
+                color = self.color_match(passes)
+                torque_val = random.choice([20, 40, 60])
                 self.bolt_positions[bolt_idx]["status"] = "complete"
                 self.bolt_positions[bolt_idx]["torque"] = torque_val
+                self.bolt_positions[bolt_idx]["color"] = color
+                self.bolt_torque[bolt_idx - 1] = color
+
                 self.process_progress = bolt_idx / total_bolts * 100.0
                 await broadcast_fn(self.get_status_payload())
-                await log_fn("INFO", f"Torqued bolt #{bolt_idx} ({torque_val} lb-in)", "robot")
+                # Broadcast real get_bolt_torque message with color array
+                await broadcast_fn({"type": "get_bolt_torque", "data": self.bolt_torque})
+                await log_fn("INFO", f"Torqued bolt #{bolt_idx} (color: {color}, passes: {passes})", "robot")
 
             self.program_running = False
             self.current_command = "SEQUENCE_COMPLETE"
@@ -215,16 +283,47 @@ class MockRobotState:
             logger.info("Bolting sequence was cancelled/aborted.")
 
 
+def generate_mock_camera_frame(frame_num: int) -> List[int]:
+    """Generates a synthetic PNG test frame with crosshair and telemetry overlay."""
+    try:
+        from PIL import Image, ImageDraw
+        import io
+        img = Image.new("RGB", (640, 480), color=(15, 23, 42))
+        draw = ImageDraw.Draw(img)
+        # Background Grid
+        for x in range(0, 640, 40):
+            draw.line([(x, 0), (x, 480)], fill=(30, 41, 59), width=1)
+        for y in range(0, 480, 40):
+            draw.line([(0, y), (640, y)], fill=(30, 41, 59), width=1)
+        # Center Reticle
+        cx, cy = 320, 240
+        draw.ellipse([cx - 45, cy - 45, cx + 45, cy + 45], outline=(110, 226, 204), width=2)
+        draw.line([(cx - 70, cy), (cx + 70, cy)], fill=(110, 226, 204), width=2)
+        draw.line([(cx, cy - 70), (cx, cy + 70)], fill=(110, 226, 204), width=2)
+        # Simulated bolt target
+        draw.ellipse([cx - 10, cy - 10, cx + 10, cy + 10], fill=(34, 197, 94))
+        draw.text((20, 20), f"SIMULATED COBOT VISION - FRAME #{frame_num}", fill=(248, 250, 252))
+        draw.text((20, 40), "RESOLUTION: 640x480 | STATUS: TARGET ACQUIRED", fill=(148, 163, 184))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return list(buf.getvalue())
+    except Exception:
+        return [137, 80, 78, 71, 13, 10, 26, 10]
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 # 3. WEBSOCKET SERVER IMPLEMENTATION
 # ═════════════════════════════════════════════════════════════════════════════
 class MockWebSocketServer:
     """Standalone WebSocket Server serving robot state & response handling."""
 
-    def __init__(self, host: str = "0.0.0.0", port: int = 8080, delay_multiplier: float = 1.0):
+    def __init__(self, host: str = "0.0.0.0", port: int = 8080, delay_multiplier: float = 1.0, status_interval: float = 0.2, simulate_camera: bool = False):
         self.host = host
         self.port = port
         self.delay_multiplier = max(0.0, delay_multiplier)
+        self.status_interval = status_interval
+        self.simulate_camera = simulate_camera
+        self.camera_frame_idx = 0
         self.robot = MockRobotState()
         self.connected_clients: Set[Any] = set()
         self.log_history: List[Dict[str, Any]] = []
@@ -264,16 +363,30 @@ class MockWebSocketServer:
         self.connected_clients.difference_update(dead)
 
     async def _periodic_status_loop(self):
-        """Broadcasts status update every 1 second ONLY while a program is actively running."""
+        """Broadcasts status update every 200ms (5Hz) continuously to mirror the real robot backend."""
         while True:
             try:
-                await asyncio.sleep(1.0)
-                if self.robot.program_running:
+                await asyncio.sleep(self.status_interval)
+                if self.connected_clients:
                     await self.broadcast(self.robot.get_status_payload())
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Error in periodic broadcast: {e}")
+
+    async def _periodic_camera_loop(self):
+        """Broadcasts simulated camera frame every 200ms (5Hz) to connected clients."""
+        while True:
+            try:
+                await asyncio.sleep(0.2)
+                if self.connected_clients:
+                    self.camera_frame_idx += 1
+                    frame_bytes = generate_mock_camera_frame(self.camera_frame_idx)
+                    await self.broadcast({"type": "camera_frame", "data": frame_bytes})
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in periodic camera broadcast: {e}")
 
     async def handle_client(self, websocket):
         """Handles individual WebSocket connection lifecycle."""
@@ -282,9 +395,11 @@ class MockWebSocketServer:
         logger.info(f"Client connected: {client_addr} (Total clients: {len(self.connected_clients)})")
 
         try:
-            # 1. Send connection status and log history (no update_state until program runs)
+            # 1. Send connection status, log history, cda_popup, and bolt_torque
             await websocket.send(json.dumps({"type": "connection", "data": {"tcp_connected": True}}))
             await websocket.send(json.dumps({"type": "log_history", "data": self.log_history[-100:]}))
+            await websocket.send(json.dumps({"type": "cda_popup", "data": self.robot.cda_popup}))
+            await websocket.send(json.dumps({"type": "get_bolt_torque", "data": self.robot.bolt_torque}))
 
             await self.add_log("INFO", f"Browser connected from {client_addr}", "server")
 
@@ -298,10 +413,17 @@ class MockWebSocketServer:
 
                 cmd_type = str(message.get("type", "")).strip().lower()
                 data = message.get("data", {})
+
+                # Fast-path relay for camera frames (e.g. from camera producer scripts or ROS bridge)
+                if cmd_type == "camera_frame":
+                    await self.broadcast(message)
+                    continue
+
                 logger.info(f"Received command: type='{cmd_type}', data={data}")
 
-                # Log incoming command to the frontend Logs tab
-                await self.add_log("INFO", f"Command: {cmd_type.upper()} {data if data else ''}", "browser")
+                # Log incoming command to the frontend Logs tab (skip high-frequency polling commands)
+                if cmd_type not in ("get_bolt_torque", "get_bolt_status", "get_status"):
+                    await self.add_log("INFO", f"Command: {cmd_type.upper()} {data if data else ''}", "browser")
 
                 # Execute state updates and fetch response
                 response_msg = await self.process_command(cmd_type, data)
@@ -309,18 +431,19 @@ class MockWebSocketServer:
                 # Send reply back to the requesting client
                 if response_msg:
                     await websocket.send(json.dumps(response_msg))
-                    raw_data = response_msg.get("data")
-                    if isinstance(raw_data, dict):
-                        resp_msg_text = raw_data.get("message", "OK")
-                        resp_status = raw_data.get("status", "ok")
-                    else:
-                        resp_msg_text = f"Code {raw_data}"
-                        resp_status = "ok"
-                    await self.add_log(
-                        "INFO" if resp_status == "ok" else "ERROR",
-                        f"Response [{cmd_type.upper()}]: {resp_msg_text}",
-                        "robot",
-                    )
+                    if cmd_type not in ("get_bolt_torque", "get_bolt_status", "get_status"):
+                        raw_data = response_msg.get("data")
+                        if isinstance(raw_data, dict):
+                            resp_msg_text = raw_data.get("message", "OK")
+                            resp_status = raw_data.get("status", "ok")
+                        else:
+                            resp_msg_text = f"Code {raw_data}"
+                            resp_status = "ok"
+                        await self.add_log(
+                            "INFO" if resp_status == "ok" else "ERROR",
+                            f"Response [{cmd_type.upper()}]: {resp_msg_text}",
+                            "robot",
+                        )
 
                 # Broadcast updated state ONLY if program is currently running
                 if self.robot.program_running:
@@ -351,6 +474,7 @@ class MockWebSocketServer:
         if cmd_type == "initialize":
             self.robot.robot_mode = "INITIALIZING"
             self.robot.current_command = "INITIALIZING"
+            self.robot._reset_bolts()
             # Real backend does not send update_state on initialize; only sends command_received
 
         elif cmd_type == "load_app":
@@ -373,6 +497,10 @@ class MockWebSocketServer:
             torque_num = data.get("torqueNum", 1)
             self.robot.active_bolt = bolt_num
             logger.info(f"Bolt config set: boltNum={bolt_num}, torqueNum={torque_num}")
+            return {
+                "type": "command_received",
+                "data": {"status": "ok", "message": f"Bolt config set: bolt={bolt_num}, torque={torque_num}"},
+            }
 
         elif cmd_type == "start":
             self.robot.robot_mode = "RUNNING"
@@ -413,6 +541,22 @@ class MockWebSocketServer:
             self.robot.y = 0.0
             self.robot.z = 0.0
 
+        elif cmd_type == "cda_popup":
+            if isinstance(data, dict) and "data" in data:
+                self.robot.cda_popup = bool(data["data"])
+            elif isinstance(data, bool):
+                self.robot.cda_popup = data
+            return {
+                "type": "cda_popup",
+                "data": self.robot.cda_popup,
+            }
+
+        elif cmd_type in ("get_bolt_torque", "get_bolt_status"):
+            return {
+                "type": cmd_type,
+                "data": self.robot.bolt_torque,
+            }
+
         elif cmd_type == "move_x":
             val = float(data.get("value", 1.0))
             self.robot.x += val
@@ -438,6 +582,7 @@ class MockWebSocketServer:
             self.robot.robot_mode = "RUNNING"
             self.robot.initialized = True
             self.robot.current_command = "READY"
+            self.robot._reset_bolts()
 
         elif cmd_type == "start":
             # Launch background simulation for the active task
@@ -451,15 +596,16 @@ class MockWebSocketServer:
         response = copy.deepcopy(config.get("response"))
 
         # Inject dynamic data into response if applicable
-        if cmd_type == "load_app":
-            app_name = data.get("app_name", "TopPlateBolt")
-            response["data"]["app_name"] = f"Application '{app_name}' loaded"
-            response["data"]["app_data"] = f"Task Done"
-        elif cmd_type == "bolt_config":
-            response["data"]["message"] = f"Bolt config set: bolt={data.get('boltNum')}, torque={data.get('torqueNum')}"
-        elif cmd_type == "read_laser":
-            response["data"]["value"] = self.robot.laser_value
-            response["data"]["message"] = f"Laser reading: {self.robot.laser_value} mm"
+        if response and isinstance(response.get("data"), dict):
+            if cmd_type == "load_app":
+                app_name = data.get("app_name", "TopPlateBolt")
+                response["data"]["app_name"] = f"Application '{app_name}' loaded"
+                response["data"]["app_data"] = "Task Done"
+            elif cmd_type == "bolt_config":
+                response["data"]["message"] = f"Bolt config set: bolt={data.get('boltNum')}, torque={data.get('torqueNum')}"
+            elif cmd_type == "read_laser":
+                response["data"]["value"] = self.robot.laser_value
+                response["data"]["message"] = f"Laser reading: {self.robot.laser_value} mm"
 
         return response
 
@@ -467,12 +613,16 @@ class MockWebSocketServer:
         """Starts WebSocket server and background status broadcast task."""
         logger.info(f"Starting Standalone Mock WebSocket Server on ws://{self.host}:{self.port} ...")
         logger.info(f"Delay multiplier: {self.delay_multiplier}x")
+        logger.info(f"Broadcasting telemetry stream at {1.0 / self.status_interval:.1f}Hz ({int(self.status_interval * 1000)}ms interval)")
         logger.info("Configured command response times:")
         for cmd, cfg in COMMAND_CONFIG.items():
             logger.info(f"  • {cmd.ljust(18)}: {cfg.get('delay', DEFAULT_FALLBACK_DELAY) * self.delay_multiplier:.2f}s delay")
 
-        # Start background 1Hz broadcaster
+        # Start continuous 5Hz (200ms) broadcaster
         broadcast_task = asyncio.create_task(self._periodic_status_loop())
+        if self.simulate_camera:
+            logger.info("Starting simulated 5Hz camera frame broadcast loop...")
+            camera_task = asyncio.create_task(self._periodic_camera_loop())
 
         async with serve(self.handle_client, self.host, self.port):
             logger.info(f"✓ Mock Server is active and listening on ws://{self.host}:{self.port}")
@@ -493,9 +643,26 @@ def main():
         default=1.0,
         help="Multiplier for command response delays (e.g. 2.0 to double, 0.0 for instant)",
     )
+    parser.add_argument(
+        "--status-interval",
+        type=float,
+        default=0.2,
+        help="Interval in seconds for update_state broadcasts (default: 0.2 = 200ms)",
+    )
+    parser.add_argument(
+        "--simulate-camera",
+        action="store_true",
+        help="Simulate 5Hz camera frames over WebSocket",
+    )
     args = parser.parse_args()
 
-    server = MockWebSocketServer(host=args.host, port=args.port, delay_multiplier=args.delay_multiplier)
+    server = MockWebSocketServer(
+        host=args.host,
+        port=args.port,
+        delay_multiplier=args.delay_multiplier,
+        status_interval=args.status_interval,
+        simulate_camera=args.simulate_camera,
+    )
 
     try:
         asyncio.run(server.run())

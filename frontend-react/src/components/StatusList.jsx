@@ -1,3 +1,4 @@
+import { formatRobotMode, dotColorForMode } from '../utils/robotModes';
 import './StatusList.css';
 
 function dotColorForCommand(currentCommand) {
@@ -5,18 +6,15 @@ function dotColorForCommand(currentCommand) {
     return isActive ? 'green' : 'yellow';
 }
 
-function dotColorForMode(mode) {
-    if (mode === 'RUNNING') return 'green';
-    return 'yellow';
-}
-
 export default function StatusList({ status, connected }) {
     const {
         current_command: currentCommand = 'NO COMMAND',
-        robot_mode: robotMode = 'POWER_OFF',
+        robot_mode: rawRobotMode = 'POWER_OFF',
         program_running: programRunning = false,
         safety_status: safetyStatus = 'NORMAL',
     } = status || {};
+
+    const robotMode = formatRobotMode(rawRobotMode);
 
     return (
         <div className="status-list">

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
-Robust Static Server for React Frontend.
-1. Catches and suppresses BrokenPipeError & ConnectionResetError when clients reload/disconnect mid-download.
-2. Supports client-side SPA routing: any subroute (/bolt, /bolt/logs, /clean, etc.) serves index.html instead of 404.
-3. Sends Cache-Control: no-cache headers on HTML so the browser always loads the latest bundle.
+Portable, Production Static Server for React Frontend.
+- 100% self-contained: Uses only standard Python library (no pip install required).
+- Zero hardcoded paths: Runs from any folder on any PC (Linux, Windows, macOS).
+- Silent BrokenPipe protection: Catches and ignores client disconnections/aborts.
+- SPA Routing: Automatically routes /bolt, /bolt/logs, /clean, etc. to index.html (no 404s).
+- Cache Control: Sends no-cache headers on HTML so browsers always fetch latest bundles.
 """
 import http.server
 import socketserver
@@ -11,16 +13,23 @@ import os
 import sys
 
 def find_dist_dir():
-    candidates = [
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "dist")),
-        os.getcwd(),
-        os.path.join(os.getcwd(), "dist"),
-        "/home/adi/Desktop/GUIRev2/frontend-react/dist",
-    ]
-    for path in candidates:
-        if os.path.exists(os.path.join(path, "index.html")):
-            return os.path.abspath(path)
-    return os.path.abspath(os.path.dirname(__file__))
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # 1. If dist/ is inside base_dir
+    if os.path.exists(os.path.join(base_dir, "dist", "index.html")):
+        return os.path.join(base_dir, "dist")
+    # 2. If frontend-react/dist/ is inside base_dir
+    if os.path.exists(os.path.join(base_dir, "frontend-react", "dist", "index.html")):
+        return os.path.join(base_dir, "frontend-react", "dist")
+    # 3. If serve.py is inside dist/ itself (no src/ folder)
+    if os.path.exists(os.path.join(base_dir, "index.html")) and not os.path.exists(os.path.join(base_dir, "src")):
+        return base_dir
+    # 4. Fallback to current working directory
+    cwd = os.getcwd()
+    if os.path.exists(os.path.join(cwd, "dist", "index.html")):
+        return os.path.join(cwd, "dist")
+    if os.path.exists(os.path.join(cwd, "frontend-react", "dist", "index.html")):
+        return os.path.join(cwd, "frontend-react", "dist")
+    return os.path.join(base_dir, "dist")
 
 DIST_DIR = find_dist_dir()
 
@@ -60,9 +69,7 @@ class QuietSPAServer(http.server.SimpleHTTPRequestHandler):
             pass
 
     def log_message(self, format, *args):
-        # Clean formatted request log
         msg = format % args
-        # Filter out harmless 404s that got rerouted to index.html
         print(f"[HTTP] {msg}")
 
 class ReusableTCPServer(socketserver.TCPServer):

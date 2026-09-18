@@ -23,8 +23,11 @@ export function useWebSocket(onMessage) {
     onMessageRef.current = onMessage;
 
     const connect = useCallback(() => {
-        const wsUrl = import.meta.env.VITE_WS_URL
-            || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+        const host = window.location.hostname || 'localhost';
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = (import.meta.env.VITE_WS_URL && !import.meta.env.VITE_WS_URL.includes('localhost'))
+            ? import.meta.env.VITE_WS_URL
+            : `${protocol}//${host}:8080/ws`;
 
         let ws;
         try {

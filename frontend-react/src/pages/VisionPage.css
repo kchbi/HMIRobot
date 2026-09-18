@@ -1,0 +1,322 @@
+/* Vision Page - Industrial Machine Vision Layout */
+.vision-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    padding: 14px 20px 16px;
+    gap: 12px;
+    background: var(--bg-page);
+    box-sizing: border-box;
+}
+
+/* --- Viewport Container --- */
+.vision-feed-container {
+    flex: 1;
+    min-height: 0;
+    background: #0b0f19;
+    border-radius: var(--radius-lg, 10px);
+    border: 1px solid #1e293b;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* The Live Image Stream */
+.vision-stream-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.vision-stream-image.cover-mode {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* --- HUD Overlays (Top Bar) --- */
+.vision-hud-top {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.vision-hud-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #f8fafc;
+}
+
+.vision-hud-badge.live {
+    border-color: rgba(34, 197, 94, 0.4);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+}
+
+.vision-hud-badge.offline {
+    border-color: rgba(220, 53, 69, 0.4);
+}
+
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+    animation: vision-pulse 1.6s infinite ease-in-out;
+}
+
+.pulse-dot.offline {
+    background: #dc3545;
+    box-shadow: 0 0 8px #dc3545;
+    animation: none;
+}
+
+@keyframes vision-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.5;
+    }
+}
+
+.vision-telemetry-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.vision-telemetry-pill strong {
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+/* --- Reticle / Crosshair Overlay --- */
+.vision-crosshair-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.crosshair-line-h {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(110, 226, 204, 0.45);
+    box-shadow: 0 0 4px rgba(110, 226, 204, 0.6);
+}
+
+.crosshair-line-v {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(110, 226, 204, 0.45);
+    box-shadow: 0 0 4px rgba(110, 226, 204, 0.6);
+}
+
+.crosshair-center-circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60px;
+    height: 60px;
+    transform: translate(-50%, -50%);
+    border: 1.5px dashed rgba(110, 226, 204, 0.8);
+    border-radius: 50%;
+}
+
+.crosshair-inner-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    transform: translate(-50%, -50%);
+    background: #6ee2cc;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #6ee2cc;
+}
+
+/* --- Alignment Grid Overlay --- */
+.vision-grid-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-size: 40px 40px;
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    z-index: 4;
+}
+
+/* --- Waiting / Placeholder State --- */
+.vision-waiting-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px;
+    color: #64748b;
+}
+
+.vision-radar-icon {
+    position: relative;
+    width: 88px;
+    height: 88px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vision-radar-icon svg {
+    width: 52px;
+    height: 52px;
+    color: var(--accent, #6ee2cc);
+    position: relative;
+    z-index: 2;
+}
+
+.radar-sweep-ring {
+    position: absolute;
+    inset: 0;
+    border: 2px solid rgba(110, 226, 204, 0.3);
+    border-radius: 50%;
+    animation: radar-pulse 2s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes radar-pulse {
+    0% {
+        transform: scale(0.6);
+        opacity: 0.9;
+    }
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}
+
+.vision-waiting-state h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 8px;
+}
+
+.vision-waiting-state p {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.vision-waiting-state .vision-hint {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+/* --- Bottom Toolbar --- */
+.vision-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    border: 1px solid var(--border, #dbe3ea);
+    border-radius: var(--radius-md, 6px);
+    padding: 10px 16px;
+    flex-shrink: 0;
+}
+
+.vision-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary, #202638);
+}
+
+.vision-tools-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vision-tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.vision-tool-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.vision-tool-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.vision-tool-btn.active {
+    background: #202638;
+    border-color: #202638;
+    color: #ffffff;
+}
+
+.vision-tool-btn.primary {
+    background: #202638;
+    color: #ffffff;
+    border-color: #202638;
+}
+
+.vision-tool-btn.primary:hover {
+    background: #2d3748;
+}

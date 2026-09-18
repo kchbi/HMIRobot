@@ -12,7 +12,7 @@ Built with **React 19 + Vite** on the frontend, **FastAPI + WebSockets** on the 
 
 For an in-depth breakdown of the wire protocol, command schemas, code mappings, live telemetry, and traffic storage locations, please read:
 
-👉 **[Complete Command Protocol Documentation](file:///home/adi/Desktop/GUIRev2/COMMAND_PROTOCOL.md)**
+👉 **[Complete Command Protocol Documentation](COMMAND_PROTOCOL.md)**
 
 ### Key Protocol Quick Reference:
 | Command | Outbound Payload | Response Code | Description |

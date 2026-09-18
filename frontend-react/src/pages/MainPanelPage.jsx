@@ -22,17 +22,8 @@ export default function MainPanelPage() {
     // 2. Start: Enabled only when initialized and NOT running
     const isStartDisabled = !isInitialized || programRunning;
 
-    // 3. Stow: Enabled when initialized or actively running (can stow from idle or running)
-    // Disabled only when already stowed / uninitialized and not running
+    // 3. Stow: Enabled when initialized or actively running
     const isStowDisabled = !isInitialized && !programRunning;
-
-    console.log('[MainPanelPage State]', {
-        isInitialized,
-        programRunning,
-        isInitializeDisabled,
-        isStartDisabled,
-        isStowDisabled,
-    });
 
     const CONTROLS = [
         { action: 'INITIALIZE', label: 'Initialize', disabled: isInitializeDisabled },

@@ -1,21 +1,41 @@
 import { useEffect } from 'react';
-import { BOLT_OVERLAY_POSITIONS, TORQUE_COLORS, TORQUE_LEGEND } from './boltPlateLayout';
+import { BOLT_OVERLAY_POSITIONS, TORQUE_COLORS, TORQUE_LEGEND, BOLT_TORQUE_COLORS } from './boltPlateLayout';
 import plateImage from '../assets/bolting-plate.png';
 import './BoltPlateVisual.css';
 
 /** Fallback tint for a bolt the robot is working on before its torque id is known. */
 const IN_PROGRESS_FALLBACK = '#f59e0b';
 
+function resolveBoltColor(colorName) {
+    if (!colorName) return null;
+    const lower = String(colorName).trim().toLowerCase();
+    return BOLT_TORQUE_COLORS[lower] || colorName;
+}
+
 function markerColor(bolt, active) {
     if (!bolt) return active ? IN_PROGRESS_FALLBACK : null;
+
+    // 1. Direct color from get_bolt_torque (e.g. "lawngreen", "yellow", "orange", "red", "indigo", "white")
+    const rawColor = typeof bolt === 'string' ? bolt : (bolt.color || null);
+    if (rawColor) {
+        const lower = rawColor.toLowerCase();
+        // If bolt has a valid completed torque color, display it immediately
+        if (lower !== 'white') {
+            return resolveBoltColor(rawColor);
+        }
+        // If untorqued ("white"), show active amber-yellow pulse while robot is driving it
+        if (active) return IN_PROGRESS_FALLBACK;
+        return null;
+    }
+
+    // 2. Legacy torque/status property (from mock simulation fallback)
     const torqueVal = bolt.torque ?? bolt.torque_id;
-    // Support 20/40/60 lb-in, or pass 1/2, or default to green for complete
     const torqueColor = TORQUE_COLORS[torqueVal]
         || (torqueVal === 1 ? TORQUE_COLORS[40] : null)
         || (torqueVal === 2 ? TORQUE_COLORS[60] : null)
         || null;
 
-    if (bolt.status === 'complete') return torqueColor || '#22c55e'; // Default to green on complete!
+    if (bolt.status === 'complete') return torqueColor || '#22c55e';
     if (bolt.status === 'in_progress' || active) return torqueColor || IN_PROGRESS_FALLBACK;
     return null;
 }

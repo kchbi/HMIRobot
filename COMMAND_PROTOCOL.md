@@ -33,7 +33,32 @@ The system operates primarily on a **direct WebSocket wire protocol**:
 ### Core Communication Principles
 1. **Fire-and-Forget Dispatch:** Outbound commands are sent over the WebSocket immediately without complex client-side Promise queues or FIFO locks.
 2. **Deterministic String Code Mapping:** Command acknowledgments return unique numeric string codes (e.g. `"1"` for `initialize`, `"2"` for `start`). The frontend matches these via `RESPONSE_CODE_MAP`, preventing race conditions.
-3. **Gated Telemetry Stream:** The backend does **not** spam `update_state` messages while idle or initializing. Telemetry broadcasts (`update_state`) only stream while a program is actively running (`program_running: true`).
+3. **Continuous/Gated Telemetry Stream:** The backend streams live telemetry broadcasts (`update_state`) at 5 Hz (200 ms) and real-time color updates via `get_bolt_torque`.
+
+### Standard 6-Step Command Flow
+```text
+1. CONNECT
+   ws://<host>:<port>/ws
+   │
+   ▼
+2. load_app
+   {"type": "load_app", "data": {"app_name": "TopPlateBolt"}}
+   │
+   ▼  Wait for response: "type": == "load_app"
+3. bolt_config   [Dispatched automatically after load_app response]
+   {"type": "bolt_config", "data": {"boltNum": 24, "torqueNum": 5}}
+   │
+   ▼
+4. initialize
+   {"type": "initialize"}
+   │
+   ▼  Wait for response: "type": == "command_received" (code: 1)
+5. start
+   {"type": "start"}
+   │
+   ▼  Wait for response: "type": == "command_received" (code: 2)
+6. MONITOR update_state & get_bolt_torque messages
+```
 
 ---
 
@@ -45,14 +70,14 @@ The command protocols and state management rules are stored across the following
 
 | File Path | What is Stored Here |
 | :--- | :--- |
-| [`src/context/AppContext.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/context/AppContext.jsx) | • **`RESPONSE_CODE_MAP`**: Lookup table matching string return codes (`"0"`–`"6"`) to command names.<br>• **`handleMessage`**: Central switch board handling `command_received`, `update_state`, `status_update`, `connection`, `log`.<br>• **`sendCommand`**: Outbound serializer creating `{"type": "...", "data": ...}`.<br>• **`logs` State**: In-memory ring buffer (up to 1,000 items) recording every transmitted and received frame. |
-| [`src/hooks/useWebSocket.js`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/hooks/useWebSocket.js) | • **WebSocket Transport Lifecycle**: `ws.onopen`, `ws.onmessage`, `ws.onclose`, `ws.onerror`.<br>• **Wire Dispatch**: Low-level `ws.send(JSON.stringify(msg))`.<br>• **Auto-Reconnect**: Exponential backoff reconnect logic (up to 10 retries). |
-| [`src/components/boltPlateLayout.js`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/components/boltPlateLayout.js) | • **`BOLT_OVERLAY_POSITIONS`**: Sub-pixel accurate X/Y coordinates for all 24 bolt holes on the plate artwork.<br>• **`TORQUE_COLORS`**: Color mapping (`20` lb-in ➔ Red, `40` lb-in ➔ Amber, `60` lb-in ➔ Green).<br>• **`TORQUE_LEGEND`**: Visual legend definitions. |
-| [`src/components/BoltPlateVisual.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/components/BoltPlateVisual.jsx) | • **Active Bolt Detection**: Reads `data.active_bolt` (or fallback `status: "in_progress"`).<br>• **`markerColor` Function**: Controls animated pulsing ring on active bolt and sets solid torque colors upon completion. |
-| [`src/pages/MainPanelPage.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/pages/MainPanelPage.jsx) | • **Button Action Bindings**: Links UI buttons to actions (`INITIALIZE`, `START`, `STOW`).<br>• **Interlock Logic**: Disables Start until `initialized === true`, locks controls during `program_running`. |
-| [`src/pages/AdvancedPage.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/pages/AdvancedPage.jsx) | • **Debug Console**: Dropdown command list (`TURN_ROBOT_ON`, `RELEASE_BRAKES`, `PAUSE`, `ABORT`, etc.).<br>• **Connect / Disconnect Buttons**: Direct manual control of robot socket. |
-| [`src/pages/CalibratePage.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/pages/CalibratePage.jsx) | • Calibration command triggers: `GO_CALIBRATION`, `SET_CALIBRATION`, `READ_LASER`, `UPDATE_LASER_TCP`. |
-| [`src/components/RobotMovePad.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/components/RobotMovePad.jsx) | • Manual jogging: `MOVE_X`, `MOVE_Y` with step size slider (0.1 mm – 50.0 mm) and keyboard hotkeys. |
+| [`src/context/AppContext.jsx`](frontend-react/src/context/AppContext.jsx) | • **`RESPONSE_CODE_MAP`**: Lookup table matching string return codes (`"0"`–`"6"`) to command names.<br>• **`handleMessage`**: Central switch board handling `command_received`, `update_state`, `status_update`, `connection`, `log`.<br>• **`sendCommand`**: Outbound serializer creating `{"type": "...", "data": ...}`.<br>• **`logs` State**: In-memory ring buffer (up to 1,000 items) recording every transmitted and received frame. |
+| [`src/hooks/useWebSocket.js`](frontend-react/src/hooks/useWebSocket.js) | • **WebSocket Transport Lifecycle**: `ws.onopen`, `ws.onmessage`, `ws.onclose`, `ws.onerror`.<br>• **Wire Dispatch**: Low-level `ws.send(JSON.stringify(msg))`.<br>• **Auto-Reconnect**: Exponential backoff reconnect logic (up to 10 retries). |
+| [`src/components/boltPlateLayout.js`](frontend-react/src/components/boltPlateLayout.js) | • **`BOLT_OVERLAY_POSITIONS`**: Sub-pixel accurate X/Y coordinates for all 24 bolt holes on the plate artwork.<br>• **`TORQUE_COLORS`**: Color mapping (`20` lb-in ➔ Red, `40` lb-in ➔ Amber, `60` lb-in ➔ Green).<br>• **`TORQUE_LEGEND`**: Visual legend definitions. |
+| [`src/components/BoltPlateVisual.jsx`](frontend-react/src/components/BoltPlateVisual.jsx) | • **Active Bolt Detection**: Reads `data.active_bolt` (or fallback `status: "in_progress"`).<br>• **`markerColor` Function**: Controls animated pulsing ring on active bolt and sets solid torque colors upon completion. |
+| [`src/pages/MainPanelPage.jsx`](frontend-react/src/pages/MainPanelPage.jsx) | • **Button Action Bindings**: Links UI buttons to actions (`INITIALIZE`, `START`, `STOW`).<br>• **Interlock Logic**: Disables Start until `initialized === true`, locks controls during `program_running`. |
+| [`src/pages/AdvancedPage.jsx`](frontend-react/src/pages/AdvancedPage.jsx) | • **Debug Console**: Dropdown command list (`TURN_ROBOT_ON`, `RELEASE_BRAKES`, `PAUSE`, `ABORT`, etc.).<br>• **Connect / Disconnect Buttons**: Direct manual control of robot socket. |
+| [`src/pages/CalibratePage.jsx`](frontend-react/src/pages/CalibratePage.jsx) | • Calibration command triggers: `GO_CALIBRATION`, `SET_CALIBRATION`, `READ_LASER`, `UPDATE_LASER_TCP`. |
+| [`src/components/RobotMovePad.jsx`](frontend-react/src/components/RobotMovePad.jsx) | • Manual jogging: `MOVE_X`, `MOVE_Y` with step size slider (0.1 mm – 50.0 mm) and keyboard hotkeys. |
 
 ---
 
@@ -60,11 +85,11 @@ The command protocols and state management rules are stored across the following
 
 | File Path | What is Stored Here |
 | :--- | :--- |
-| [`backend/mock_ws_server.py`](file:///home/adi/Desktop/GUIRev2/backend/mock_ws_server.py) | • **`COMMAND_CONFIG`**: Master dictionary defining artificial delays and response templates for all commands.<br>• **`MockRobotState`**: State machine holding coordinates, bolt array, torque values, and task progress.<br>• **`process_command`**: Execution logic applying state transitions for `initialize`, `start`, `stow`, `connect`, etc.<br>• **`run_bolting_simulation`**: Async bolting loop driving bolts 1 through 24 and streaming `update_state`.<br>• **`log_history`**: Ring buffer storing the last 500 log events in server RAM. |
-| [`backend/main.py`](file:///home/adi/Desktop/GUIRev2/backend/main.py) | • Alternative **FastAPI + Uvicorn** server acting as a bridge between WebSocket clients and TCP hardware controllers. |
-| [`backend/tcp_client.py`](file:///home/adi/Desktop/GUIRev2/backend/tcp_client.py) | • Low-level socket manager connecting to physical robot controllers via TCP (`\n`-delimited framing). |
-| [`backend/command_protocol.py`](file:///home/adi/Desktop/GUIRev2/backend/command_protocol.py) | • Pydantic models and validators for the legacy `{action, params, id}` framing. |
-| [`backend/ur_*_protocol.json`](file:///home/adi/Desktop/GUIRev2/backend/) | • Low-level packet and register specifications for Universal Robots Client and Realtime interfaces. |
+| [`backend/mock_ws_server.py`](backend/mock_ws_server.py) | • **`COMMAND_CONFIG`**: Master dictionary defining artificial delays and response templates for all commands.<br>• **`MockRobotState`**: State machine holding coordinates, bolt array, torque values, and task progress.<br>• **`process_command`**: Execution logic applying state transitions for `initialize`, `start`, `stow`, `connect`, etc.<br>• **`run_bolting_simulation`**: Async bolting loop driving bolts 1 through 24 and streaming `update_state`.<br>• **`log_history`**: Ring buffer storing the last 500 log events in server RAM. |
+| [`backend/main.py`](backend/main.py) | • Alternative **FastAPI + Uvicorn** server acting as a bridge between WebSocket clients and TCP hardware controllers. |
+| [`backend/tcp_client.py`](backend/tcp_client.py) | • Low-level socket manager connecting to physical robot controllers via TCP (`\n`-delimited framing). |
+| [`backend/command_protocol.py`](backend/command_protocol.py) | • Pydantic models and validators for the legacy `{action, params, id}` framing. |
+| [`backend/ur_*_protocol.json`](backend/) | • Low-level packet and register specifications for Universal Robots Client and Realtime interfaces. |
 
 ---
 
@@ -83,6 +108,7 @@ The following table defines the exact wire protocol negotiated between the HMI a
 | **`turn_robot_on`** | `{"type": "turn_robot_on"}` | Advanced Page | `command_received` | `"6"` | Sets `robot_on: true`, `robot_mode: "IDLE"`. |
 | **`release_brakes`**| `{"type": "release_brakes"}`| Advanced Page | `command_received` | `"0"` | Sets `brakes_released: true`. |
 | **`load_app`** | `{"type": "load_app", "data": {"app_name": "..."}}` | Home Screen Task Cards | `load_app` | `{"app_name": "...", "app_data": msg}` | Confirms app/recipe loaded on controller, shows toast notification. |
+| **`bolt_config`** | `{"type": "bolt_config", "data": {"boltNum": 24, "torqueNum": 5}}` | Auto after `load_app` ack | `command_received` | `{"status": "ok", ...}` | Configures active bolt index and torque preset on the controller. |
 | **`shutdown`** | `{"type": "shutdown"}` | Advanced Page | `command_received` | `""` | Logs shutdown acknowledgment. |
 | **`connect`** | `{"type": "connect", "data": {"host": "...", "port": ...}}` | Advanced Page | `command_received` + `connection` | `{"connected": true}` | Turns connection dot **GREEN**. |
 | **`disconnect`** | `{"type": "disconnect"}` | Advanced Page | `command_received` + `connection` | `{"connected": false}` | Turns connection dot **RED**, resets `initialized: false`. |
@@ -123,7 +149,7 @@ While a program is actively running following a `start` command, the backend str
 ```
 
 ### B. Visualizer Logic on the Bolting Plate
-Inside [BoltPlateVisual.jsx](file:///home/adi/Desktop/GUIRev2/frontend-react/src/components/BoltPlateVisual.jsx):
+Inside [BoltPlateVisual.jsx](frontend-react/src/components/BoltPlateVisual.jsx):
 1. **Active Bolt (`active_bolt`):**
    * The bolt matching `data.active_bolt` pulses with an animated halo ring (`.bolt-marker.active`) and an amber/yellow warning glow.
 2. **Completed Bolt (`status: "complete"`):**
