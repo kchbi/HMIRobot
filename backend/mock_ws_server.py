@@ -107,6 +107,13 @@ COMMAND_CONFIG: Dict[str, Dict[str, Any]] = {
         "delay": 0.05,
         "response": {"type": "cda_popup", "data": True},
     },
+    "caliberation": {
+        "delay": 3.0,
+        "response": {
+            "type": "command_received",
+            "data": {"status": "ok", "message": "Calibration complete"},
+        },
+    },
     "get_bolt_torque": {
         "delay": 0.05,
         "response": {"type": "get_bolt_torque", "data": []},
@@ -118,6 +125,15 @@ COMMAND_CONFIG: Dict[str, Dict[str, Any]] = {
 }
 
 DEFAULT_FALLBACK_DELAY = 0.1
+
+
+def _caliberation_mode(data: Any) -> str:
+    """Extracts "start" / "validate" from a caliberation command payload."""
+    if isinstance(data, str):
+        return data.strip().lower()
+    if isinstance(data, dict):
+        return str(data.get("value", data.get("mode", ""))).strip().lower()
+    return ""
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -157,6 +173,10 @@ class MockRobotState:
         }
         self.laser_value = 45.2
         self.laser_tcp = {"x": 0.0, "y": 0.0, "z": 0.0}
+
+        # Calibration routine
+        self.calibration_running = False
+        self.calibration_valid = False
 
         # Task Progress
         self.process_progress = 0.0
@@ -572,6 +592,11 @@ class MockWebSocketServer:
         elif cmd_type == "read_laser":
             self.robot.laser_value = round(random.uniform(40.0, 50.0), 2)
 
+        elif cmd_type == "caliberation" and _caliberation_mode(data) == "start":
+            self.robot.calibration_running = True
+            self.robot.calibration_valid = False
+            self.robot.current_command = "CALIBRATING"
+
         # 3. Simulate command execution delay
         if effective_delay > 0:
             logger.info(f"Waiting {effective_delay:.2f}s before sending '{cmd_type}' response...")
@@ -583,6 +608,11 @@ class MockWebSocketServer:
             self.robot.initialized = True
             self.robot.current_command = "READY"
             self.robot._reset_bolts()
+
+        elif cmd_type == "caliberation" and _caliberation_mode(data) == "start":
+            self.robot.calibration_running = False
+            self.robot.calibration_valid = True
+            self.robot.current_command = "NO COMMAND"
 
         elif cmd_type == "start":
             # Launch background simulation for the active task
@@ -606,6 +636,20 @@ class MockWebSocketServer:
             elif cmd_type == "read_laser":
                 response["data"]["value"] = self.robot.laser_value
                 response["data"]["message"] = f"Laser reading: {self.robot.laser_value} mm"
+            elif cmd_type == "caliberation":
+                mode = _caliberation_mode(data)
+                if mode == "validate":
+                    valid = self.robot.calibration_valid
+                    response["data"]["status"] = "ok" if valid else "error"
+                    response["data"]["valid"] = valid
+                    response["data"]["message"] = (
+                        "Calibration validated" if valid else "No calibration to validate"
+                    )
+                elif mode == "start":
+                    response["data"]["message"] = "Calibration routine complete"
+                else:
+                    response["data"]["status"] = "error"
+                    response["data"]["message"] = f"Unknown caliberation mode: {mode!r}"
 
         return response
 

@@ -29,6 +29,7 @@ SET_CALIBRATION = "SET_CALIBRATION"
 GO_CALIBRATION = "GO_CALIBRATION"
 READ_LASER = "READ_LASER"
 UPDATE_LASER_TCP = "UPDATE_LASER_TCP"
+CALIBERATION = "CALIBERATION"  # data: "start" | "validate"
 
 # Status
 GET_STATUS = "GET_STATUS"
@@ -109,6 +110,7 @@ COMMAND_DESCRIPTIONS = {
     GO_CALIBRATION: "Go to calibration point",
     READ_LASER: "Read laser measurement",
     UPDATE_LASER_TCP: "Update laser TCP offset",
+    CALIBERATION: "Run or validate the calibration routine",
     GET_STATUS: "Get robot status",
     SET_TASK: "Set active task type",
     GET_PROGRESS: "Get task progress",

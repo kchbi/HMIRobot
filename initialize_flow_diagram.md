@@ -2,6 +2,12 @@
 
 This document diagrams the complete lifecycle of the **Initialize**, **Start**, and **Stow** commands, button interlocks, network payloads, state mutations, and visual resets in the current architecture.
 
+> [!NOTE]
+> **Calibration happens before any of this.** The Calibration page is reached from
+> the Home screen (`/calibration`), not from a task, and does not require
+> `initialized === true`. See [Section 5](#5-upstream-calibration-before-initialize)
+> and `COMMAND_PROTOCOL.md` → Walkthrough C.
+
 ---
 
 ## 1. Sequence Diagram: Complete Initialize Flow
@@ -139,8 +145,14 @@ const CONTROLS = [
 const sendCommand = useCallback((action, params = {}) => {
     // 1. Format payload: { "type": "initialize" }
     const msg = { type: action.toLowerCase() };
-    if (Object.keys(params).length) {
-        msg.data = params;
+    // params may be an object of fields, or a scalar payload
+    // (e.g. {"type": "caliberation", "data": "start"})
+    if (params !== null && params !== undefined) {
+        if (typeof params === 'object') {
+            if (Object.keys(params).length) msg.data = params;
+        } else {
+            msg.data = params;
+        }
     }
     const rawSent = JSON.stringify(msg);
 
@@ -175,8 +187,13 @@ const sendCommand = useCallback((action, params = {}) => {
     }
 
     const msg = { type: action.toLowerCase() };
-    if (Object.keys(params).length) {
-        msg.data = params;
+    // Scalar payloads pass straight through; objects are spread as `data`
+    if (params !== null && params !== undefined) {
+        if (typeof params === 'object') {
+            if (Object.keys(params).length) msg.data = params;
+        } else {
+            msg.data = params;
+        }
     }
     ws.send(JSON.stringify(msg)); // Transmitted over WebSocket
 }, []);
@@ -296,3 +313,68 @@ Backend  ═══════════════════════�
 * **`Start`** disables, **`Initialize`** stays disabled, **`Stow` stays ENABLED**.
 * Bolt 1 begins pulsing with the yellow ring on the plate visualizer.
 * Telemetry streams continuously until all bolts complete or until the operator clicks **Stow**.
+
+---
+
+## 5. Upstream: Calibration Before Initialize
+
+Calibration sits **outside** the Initialize ➔ Start ➔ Stow interlock entirely. It is
+a standalone pre-task step with its own route and its own gate.
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                          OPERATOR JOURNEY (FULL)                                 │
+│                                                                                  │
+│   [HOME SCREEN]                                                                  │
+│      │                                                                           │
+│      ├─► "Calibration" card ──► /calibration                                     │
+│      │      • Gate: tcpConnected only (NOT initialized)                          │
+│      │      • Start Calibration     {"type":"caliberation","data":"start"}       │
+│      │      • Validate Calibration  {"type":"caliberation","data":"validate"}    │
+│      │      • No load_app — calibration is not an app                            │
+│      │                                                                           │
+│      └─► "Top Plate Bolting" card ──► selectTask('bolt') ──► /bolt               │
+│             • Fires load_app + bolt_config                                       │
+│             • THEN the Initialize / Start / Stow flow in Sections 1–4 applies    │
+└──────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why it is not a task tab
+
+An earlier revision placed this inside the bolt tab bar. It was moved because the
+tab bar only exists *after* a task is loaded, which is too late — calibration is
+something you do first. The pre-existing **Calibrate** tab (`/:task/calibrate`:
+Go/Set positions, laser TCP, Read Laser) is a different screen and still lives
+inside the task.
+
+### Interlock comparison
+
+| Screen | Gate | Requires `initialized` | Sends `load_app` |
+| :--- | :--- | :---: | :---: |
+| Main Panel (`/bolt`) | `initialized` + `program_running` | Yes | Yes (on task select) |
+| Calibration (`/calibration`) | `tcpConnected` only | No | No |
+
+### Response dispatch
+
+Unlike `initialize` (code `"1"`), calibration replies carry no numeric code, so
+`RESPONSE_CODE_MAP` misses and `handleMessage()` falls through to the message-text
+chain:
+
+```javascript
+if (!commandName) {
+    if (messageText.toLowerCase().includes('calibrat')) {
+        commandName = 'calibration';          // ← matched here
+    } else if (messageText.toLowerCase().includes('bolt')) {
+        ...
+}
+
+// Toast carries the server's own message, red on failure
+if (commandName === 'calibration') {
+    const failed = dataCode.toLowerCase() === 'error';
+    showToast(messageText || 'Calibration acknowledged', failed ? 'error' : 'success');
+}
+```
+
+> [!IMPORTANT]
+> The wire `type` is `caliberation`; the UI label and every internal identifier is
+> `calibration`. This mismatch is deliberate — do not "fix" one side alone.

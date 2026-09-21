@@ -64,6 +64,10 @@ class MockRobotState:
         self.laser_value = 0.0
         self.laser_tcp = {"x": 0.0, "y": 0.0, "z": 0.0}
 
+        # Calibration routine
+        self.calibration_running = False
+        self.calibration_valid = False
+
         # Process progress
         self.process_steps = []
         self.process_progress = 0.0
@@ -203,6 +207,7 @@ class MockTCPServer:
             "GO_CALIBRATION": self._handle_go_calibration,
             "READ_LASER": self._handle_read_laser,
             "UPDATE_LASER_TCP": self._handle_update_laser_tcp,
+            "CALIBERATION": self._handle_caliberation,
             "GET_STATUS": self._handle_get_status,
             "SET_TASK": self._handle_set_task,
             "GET_PROGRESS": self._handle_get_progress,
@@ -525,6 +530,34 @@ class MockTCPServer:
         self.state.y = point["y"]
         self.state.z = point["z"]
         return {"status": "ok", "message": f"Moved to calibration point {pos}"}
+
+    async def _handle_caliberation(self, params: dict) -> dict:
+        """Handles {"type": "caliberation", "data": "start" | "validate"}."""
+        mode = str(params.get("value", params.get("mode", ""))).lower()
+
+        if mode == "start":
+            if self.state.calibration_running:
+                return {"status": "error", "message": "Calibration already running"}
+            self.state.calibration_running = True
+            self.state.calibration_valid = False
+            self.state.current_command = "CALIBRATING"
+            asyncio.create_task(self._simulate_calibration())
+            return {"status": "ok", "message": "Calibration routine started"}
+
+        if mode == "validate":
+            if self.state.calibration_running:
+                return {"status": "error", "message": "Calibration still running"}
+            if not self.state.calibration_valid:
+                return {"status": "error", "message": "No calibration to validate"}
+            return {"status": "ok", "message": "Calibration validated", "valid": True}
+
+        return {"status": "error", "message": f"Unknown caliberation mode: {mode!r}"}
+
+    async def _simulate_calibration(self):
+        await asyncio.sleep(3.0)
+        self.state.calibration_running = False
+        self.state.calibration_valid = True
+        self.state.current_command = "NO COMMAND"
 
     async def _handle_read_laser(self, params: dict) -> dict:
         # Simulate a laser reading

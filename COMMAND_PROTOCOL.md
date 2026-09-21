@@ -12,7 +12,8 @@ The system operates primarily on a **direct WebSocket wire protocol**:
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │                             REACT HMI (Browser)                                  │
 │                                                                                  │
-│  [MainPanelPage] ──► AppContext.sendCommand() ──► useWebSocket.js               │
+│  [MainPanelPage]  ─┐                                                             │
+│  [CalibrationPage] ─┴─► AppContext.sendCommand() ──► useWebSocket.js             │
 │                                                              │                    │
 │                                                              │ (JSON over WS)     │
 │                                                              ▼                    │
@@ -34,6 +35,7 @@ The system operates primarily on a **direct WebSocket wire protocol**:
 1. **Fire-and-Forget Dispatch:** Outbound commands are sent over the WebSocket immediately without complex client-side Promise queues or FIFO locks.
 2. **Deterministic String Code Mapping:** Command acknowledgments return unique numeric string codes (e.g. `"1"` for `initialize`, `"2"` for `start`). The frontend matches these via `RESPONSE_CODE_MAP`, preventing race conditions.
 3. **Continuous/Gated Telemetry Stream:** The backend streams live telemetry broadcasts (`update_state`) at 5 Hz (200 ms) and real-time color updates via `get_bolt_torque`.
+4. **Object *or* Scalar Payloads:** `data` is usually an object (`{"app_name": "..."}`), but some commands carry a bare scalar instead (`"data": "start"`). Both `sendCommand` implementations pass a scalar straight through, and `main.py` normalizes a non-dict `data` to `{"value": data}` before forwarding it to the TCP layer.
 
 ### Standard 6-Step Command Flow
 ```text
@@ -77,6 +79,7 @@ The command protocols and state management rules are stored across the following
 | [`src/pages/MainPanelPage.jsx`](frontend-react/src/pages/MainPanelPage.jsx) | • **Button Action Bindings**: Links UI buttons to actions (`INITIALIZE`, `START`, `STOW`).<br>• **Interlock Logic**: Disables Start until `initialized === true`, locks controls during `program_running`. |
 | [`src/pages/AdvancedPage.jsx`](frontend-react/src/pages/AdvancedPage.jsx) | • **Debug Console**: Dropdown command list (`TURN_ROBOT_ON`, `RELEASE_BRAKES`, `PAUSE`, `ABORT`, etc.).<br>• **Connect / Disconnect Buttons**: Direct manual control of robot socket. |
 | [`src/pages/CalibratePage.jsx`](frontend-react/src/pages/CalibratePage.jsx) | • Calibration command triggers: `GO_CALIBRATION`, `SET_CALIBRATION`, `READ_LASER`, `UPDATE_LASER_TCP`. |
+| [`src/pages/CalibrationPage.jsx`](frontend-react/src/pages/CalibrationPage.jsx) | • Standalone page reached from the Home screen (`/calibration`), outside any task.<br>• Calibration routine triggers: `{"type": "caliberation", "data": "start"}` and `{"type": "caliberation", "data": "validate"}`. |
 | [`src/components/RobotMovePad.jsx`](frontend-react/src/components/RobotMovePad.jsx) | • Manual jogging: `MOVE_X`, `MOVE_Y` with step size slider (0.1 mm – 50.0 mm) and keyboard hotkeys. |
 
 ---
@@ -114,6 +117,8 @@ The following table defines the exact wire protocol negotiated between the HMI a
 | **`disconnect`** | `{"type": "disconnect"}` | Advanced Page | `command_received` + `connection` | `{"connected": false}` | Turns connection dot **RED**, resets `initialized: false`. |
 | **`move_x`** / **`move_y`** | `{"type": "move_x", "data": {"value": 1.0}}` | Move Pad / Keyboard | `command_received` | *code/status* | Jogs Cartesian axis position. |
 | **`read_laser`** | `{"type": "read_laser"}` | Calibrate Page | `command_received` | `{"value": ..., "unit": "mm"}` | Updates live laser reading on Calibrate screen. |
+| **`caliberation`** | `{"type": "caliberation", "data": "start"}` | Calibration Page (Home) | `command_received` | `{"status": "ok", "message": "..."}` | Runs the calibration routine. Toast shows the server's own message. |
+| **`caliberation`** | `{"type": "caliberation", "data": "validate"}` | Calibration Page (Home) | `command_received` | `{"status": "ok"\|"error", "valid": bool, "message": "..."}` | Verifies the stored calibration. Red toast when `status: "error"`. |
 
 ---
 
@@ -246,3 +251,46 @@ Where are commands and responses recorded at runtime?
    * **Bolt 1 Complete:** `bolt_positions[1].status = "complete"`, `torque = 60` ➔ Bolt 1 turns solid Green.
    * **Bolt 2:** `active_bolt: 2` ➔ Pulses Bolt 2.
 7. Upon Bolt 24 completion, backend sets `program_running: false` and emits final status. Start and Stow buttons unlock for the next cycle.
+
+---
+
+### Walkthrough C: Calibration Flow (Pre-Task)
+
+Calibration is **not** part of the 6-step task flow above. It is a standalone step
+run from the Home screen *before* a task is loaded, so it never sends `load_app`
+and does not require `initialized === true`.
+
+> **Spelling:** the wire `type` is `caliberation` (as specified by the robot side).
+> Every UI label and internal identifier uses `calibration`. The mismatch is
+> deliberate — changing one without the other breaks the protocol.
+
+1. **User taps the "Calibration" card** on the Home screen.
+2. `HomePage.jsx` calls `navigate('/calibration')` directly — deliberately **not**
+   `handleSelect()`, because `selectTask()` would fire a `load_app` and calibration
+   is not an app.
+3. `CalibrationPage.jsx` renders two actions. Both are disabled unless
+   `tcpConnected` is true; a status pill reads "Robot offline" when the link is down.
+4. **User clicks "Start Calibration"** ➔ `sendCommand('CALIBERATION', 'start')`.
+5. `AppContext.jsx` serializes a **scalar** payload:
+   ```text
+   Browser ──► Backend:  {"type":"caliberation","data":"start"}
+   ```
+6. Backend runs the routine (3.0 s in the mock), marks the calibration valid, and replies:
+   ```text
+   Backend ──► Browser:  {"type":"command_received","data":{"status":"ok","message":"Calibration routine complete"}}
+   ```
+7. `handleMessage()` finds no `RESPONSE_CODE_MAP` entry (the code is `"ok"`, not a
+   digit), so it falls through to the message-text chain. Because the text contains
+   `"calibrat"`, `commandName` resolves to `"calibration"`.
+8. The `calibration` branch raises a toast carrying the **server's own message**,
+   coloured red when `status` is `"error"`. Without this branch these replies would
+   match the silent `ack` path and the buttons would give no feedback.
+9. **User clicks "Validate Calibration"** ➔ `{"type":"caliberation","data":"validate"}`.
+   The backend answers `status: "ok", valid: true` only if a routine has completed;
+   otherwise `status: "error"` with `"No calibration to validate"`.
+
+```text
+{"type":"caliberation","data":"validate"}   ──►  status "error"  (nothing calibrated yet)
+{"type":"caliberation","data":"start"}      ──►  status "ok"     (routine complete)
+{"type":"caliberation","data":"validate"}   ──►  status "ok", valid true
+```

@@ -143,7 +143,9 @@ export function AppProvider({ children }) {
                 const dataCode = String(rawCode ?? '').trim();
                 let commandName = RESPONSE_CODE_MAP[dataCode];
                 if (!commandName) {
-                    if (messageText.toLowerCase().includes('bolt')) {
+                    if (messageText.toLowerCase().includes('calibrat')) {
+                        commandName = 'calibration';
+                    } else if (messageText.toLowerCase().includes('bolt')) {
                         commandName = 'bolt_config';
                     } else if (messageText.toLowerCase().includes('connect')) {
                         commandName = 'connect';
@@ -163,7 +165,11 @@ export function AppProvider({ children }) {
 
                 // Console + toast
                 addConsoleLine(`← command_received [${commandName}] data: ${dataCode}`, 'received');
-                if (commandName !== 'ack') {
+                if (commandName === 'calibration') {
+                    // Calibration replies carry their own message and may report failure
+                    const failed = dataCode.toLowerCase() === 'error';
+                    showToast(messageText || 'Calibration acknowledged', failed ? 'error' : 'success');
+                } else if (commandName !== 'ack') {
                     showToast(`${commandName} acknowledged (${dataCode})`, 'success');
                 }
 
@@ -449,8 +455,14 @@ export function AppProvider({ children }) {
         const actionStr = String(action || '');
         const upper = actionStr.toUpperCase();
         const msg = { type: actionStr.toLowerCase() };
-        if (Object.keys(params).length) {
-            msg.data = params;
+        // params may be an object of fields, or a scalar payload
+        // (e.g. {"type": "caliberation", "data": "start"})
+        if (params !== null && params !== undefined) {
+            if (typeof params === 'object') {
+                if (Object.keys(params).length) msg.data = params;
+            } else {
+                msg.data = params;
+            }
         }
         const rawSent = JSON.stringify(msg);
         console.log('[WS-SEND]', rawSent);

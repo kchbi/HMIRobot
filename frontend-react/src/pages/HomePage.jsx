@@ -22,6 +22,23 @@ const TASKS = [
     },
 ];
 
+// Not a robot task: opens the standalone calibration page without loading an app.
+const CALIBRATION_CARD = {
+    id: 'calibration',
+    title: 'Calibration',
+    shape: 'circle',
+    icon: (
+        <svg className="task-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="40" cy="40" r="26" stroke="#18213d" strokeWidth="4" />
+            <circle cx="40" cy="40" r="4" fill="#18213d" />
+            <line x1="40" y1="6" x2="40" y2="20" stroke="#64748b" strokeWidth="4" strokeLinecap="round" />
+            <line x1="40" y1="60" x2="40" y2="74" stroke="#64748b" strokeWidth="4" strokeLinecap="round" />
+            <line x1="6" y1="40" x2="20" y2="40" stroke="#64748b" strokeWidth="4" strokeLinecap="round" />
+            <line x1="60" y1="40" x2="74" y2="40" stroke="#64748b" strokeWidth="4" strokeLinecap="round" />
+        </svg>
+    ),
+};
+
 export default function HomePage() {
     const navigate = useNavigate();
     const { selectTask, showToast } = useApp();
@@ -49,6 +66,15 @@ export default function HomePage() {
                                 </div>
                             </button>
                         ))}
+                        <button
+                            className="task-card"
+                            onClick={() => navigate('/calibration')}
+                        >
+                            <h3 className="task-title">{CALIBRATION_CARD.title}</h3>
+                            <div className={`task-icon-wrapper ${CALIBRATION_CARD.shape}`}>
+                                {CALIBRATION_CARD.icon}
+                            </div>
+                        </button>
                     </div>
                 </div>
                 <button

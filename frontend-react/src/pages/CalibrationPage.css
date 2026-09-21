@@ -1,0 +1,268 @@
+.calibration-page {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-surface);
+    padding: 32px 20px;
+    overflow-y: auto;
+}
+
+.calibration-card {
+    width: 100%;
+    max-width: 680px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    padding: 32px 36px 24px;
+}
+
+/* --- Header row --- */
+.calibration-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+
+.calibration-title {
+    font-size: 30px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.calibration-intro {
+    margin-top: 6px;
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.calibration-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: var(--red-dim);
+    border: 1px solid transparent;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--danger);
+    white-space: nowrap;
+}
+
+.calibration-status .status-dot {
+    width: 10px;
+    height: 10px;
+    background: var(--danger);
+}
+
+.calibration-status.online {
+    background: var(--green-dim);
+    color: #17803d;
+}
+
+.calibration-status.online .status-dot {
+    background: #17a03c;
+}
+
+/* --- Action buttons --- */
+.calibration-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.calibration-action {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    min-height: 96px;
+    padding: 18px 24px;
+    text-align: left;
+    border-radius: var(--radius-lg);
+    border: 1px solid transparent;
+    transition: background var(--transition-fast), border-color var(--transition-fast),
+        transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.action-icon {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+}
+
+.action-icon svg {
+    width: 30px;
+    height: 30px;
+}
+
+.action-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.action-label {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+.action-hint {
+    font-size: 0.92rem;
+    font-weight: 500;
+    opacity: 0.72;
+}
+
+/* Primary — the routine you came here to run */
+.calibration-action.primary {
+    background: var(--btn-dark-bg);
+    color: var(--btn-dark-text);
+}
+
+.calibration-action.primary .action-icon {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--accent);
+}
+
+/* Secondary — the check you run afterwards */
+.calibration-action.secondary {
+    background: var(--bg-elevated);
+    border-color: var(--border-default);
+    color: var(--text-primary);
+}
+
+.calibration-action.secondary .action-icon {
+    background: var(--accent-light);
+    color: var(--accent-dark);
+}
+
+.calibration-action:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.calibration-action.primary:hover:not(:disabled) {
+    background: var(--btn-dark-hover);
+}
+
+.calibration-action.secondary:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.calibration-action:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.calibration-action:focus-visible {
+    outline: 2px solid var(--accent-dark);
+    outline-offset: 2px;
+}
+
+.calibration-action:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* --- Footer --- */
+.calibration-warning {
+    margin-top: 18px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--danger);
+}
+
+.calibration-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    padding: 10px 4px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: color var(--transition-fast);
+}
+
+.calibration-back svg {
+    width: 17px;
+    height: 17px;
+}
+
+.calibration-back:hover {
+    color: var(--text-primary);
+}
+
+@media (max-height: 800px) {
+    .calibration-card {
+        padding: 22px 26px 18px;
+    }
+
+    .calibration-title {
+        font-size: 22px;
+    }
+
+    .calibration-top {
+        padding-bottom: 14px;
+        margin-bottom: 16px;
+    }
+
+    .calibration-action {
+        min-height: 72px;
+        padding: 12px 18px;
+        gap: 16px;
+    }
+
+    .action-icon {
+        width: 44px;
+        height: 44px;
+    }
+
+    .action-icon svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .action-label {
+        font-size: 1.1rem;
+    }
+
+    .action-hint {
+        font-size: 0.85rem;
+    }
+
+    .calibration-actions {
+        gap: 12px;
+    }
+}
+
+@media (max-width: 560px) {
+    .calibration-card {
+        padding: 22px 20px 18px;
+    }
+
+    .calibration-action {
+        gap: 14px;
+        padding: 14px 16px;
+    }
+
+    .action-hint {
+        display: none;
+    }
+}

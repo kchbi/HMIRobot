@@ -37,9 +37,10 @@ This document is a comprehensive, function-by-function manual for the entire `fr
    - [6.2 `src/pages/MainPanelPage.jsx`](#62-srcpagesmainpanelpagejsx)
    - [6.3 `src/pages/VisionPage.jsx`](#63-srcpagesvisionpagejsx)
    - [6.4 `src/pages/CalibratePage.jsx`](#64-srcpagescalibratepagejsx)
-   - [6.5 `src/pages/AdvancedPage.jsx`](#65-srcpagesadvancedpagejsx)
-   - [6.6 `src/pages/LogsPage.jsx`](#66-srcpageslogspagejsx)
-   - [6.7 `src/pages/DataPage.jsx`](#67-srcpagesdatapagejsx)
+   - [6.5 `src/pages/CalibrationPage.jsx`](#65-srcpagescalibrationpagejsx)
+   - [6.6 `src/pages/AdvancedPage.jsx`](#66-srcpagesadvancedpagejsx)
+   - [6.7 `src/pages/LogsPage.jsx`](#67-srcpageslogspagejsx)
+   - [6.8 `src/pages/DataPage.jsx`](#68-srcpagesdatapagejsx)
 7. [Design System & CSS Styling](#7-design-system--css-styling)
    - [7.1 `src/styles/tokens.css`](#71-srcstylestokenscss)
    - [7.2 `src/styles/base.css`](#72-srcstylesbasecss)
@@ -176,6 +177,7 @@ export default function App() {
     return (
         <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/calibration" element={<CalibrationPage />} />
             <Route path="/:task" element={<TaskLayout />}>
                 <Route index element={<MainPanelPage />} />
                 <Route path="vision" element={<VisionPage />} />
@@ -191,6 +193,9 @@ export default function App() {
 ```
 - **Mechanics**:
   - `path="/"`: Renders `HomePage` (recipe selection).
+  - `path="/calibration"`: Renders `CalibrationPage` - a **top-level** route, not a task
+    sub-route. Declared ahead of `/:task` so the static segment wins the match. It
+    renders its own `Header`/`ToastContainer` because it sits outside `TaskLayout`.
   - `path="/:task"`: Mounts `TaskLayout` which wraps sub-routes with `Header` and `TabBar`.
   - Nested routes:
     - Index route (`/:task`): `MainPanelPage` (live controls, status, bolting visualization).
@@ -199,7 +204,9 @@ export default function App() {
     - `/:task/data`: `DataPage` (database metrics placeholder).
     - `/:task/calibrate`: `CalibratePage` (laser measurement and jogging).
     - `/:task/advanced`: `AdvancedPage` (raw command console and TCP configuration).
-  - `path="*"`: Catch-all that redirects any invalid route back to `/`.
+  - `path="*"`: Catch-all that redirects any invalid route back to `/`. Note that
+    `/bolt/calibration` now falls through here - the calibration routine screen moved
+    to the top-level `/calibration`.
 
 ---
 
@@ -303,7 +310,9 @@ const scheduleReconnect = useCallback(() => {
 - **Purpose**: Formats and sends a JSON command packet over the open WebSocket.
 - **Parameters**:
   - `action` (`String`): The command type (e.g. `'START'`, `'INITIALIZE'`, `'MOVE_X'`).
-  - `params` (`Object`): Optional data payload (e.g. `{ value: 1.0 }`).
+  - `params` (`Object` | `String` | `Number`): Optional data payload. Usually an object
+    (`{ value: 1.0 }`), but a **scalar** is passed straight through as `data` - this is
+    how `caliberation` sends `"start"` / `"validate"`.
 - **Code**:
 ```javascript
 const sendCommand = useCallback((action, params = {}) => {
@@ -314,8 +323,14 @@ const sendCommand = useCallback((action, params = {}) => {
     }
 
     const msg = { type: action.toLowerCase() };
-    if (Object.keys(params).length) {
-        msg.data = params;
+    // params may be an object of fields, or a scalar payload
+    // (e.g. {"type": "caliberation", "data": "start"})
+    if (params !== null && params !== undefined) {
+        if (typeof params === 'object') {
+            if (Object.keys(params).length) msg.data = params;
+        } else {
+            msg.data = params;
+        }
     }
     ws.send(JSON.stringify(msg));
 }, []);
@@ -446,6 +461,34 @@ if (
 
 ##### C. `case 'command_received'`
 - Extracts `dataCode` (e.g. `"1"` or `{"code": "1"}`) and resolves `commandName` from `RESPONSE_CODE_MAP`.
+- **Fallback chain when the code is not numeric.** Calibration replies carry
+  `{"status": "ok", "message": "..."}` rather than a digit, so the map misses and the
+  message text is inspected instead. `"calibrat"` is tested **first**, ahead of `"bolt"`:
+    ```javascript
+    if (!commandName) {
+        if (messageText.toLowerCase().includes('calibrat')) {
+            commandName = 'calibration';
+        } else if (messageText.toLowerCase().includes('bolt')) {
+            commandName = 'bolt_config';
+        } else if (messageText.toLowerCase().includes('connect')) {
+            commandName = 'connect';
+        } else if (dataCode.toLowerCase() === 'ok') {
+            commandName = 'ack';
+        } else {
+            commandName = 'ack(' + dataCode + ')';
+        }
+    }
+    ```
+- **`'calibration'` toast branch.** Without this, these replies resolve to `'ack'`,
+  which is deliberately silent, and the Calibration buttons would give no feedback:
+    ```javascript
+    if (commandName === 'calibration') {
+        const failed = dataCode.toLowerCase() === 'error';
+        showToast(messageText || 'Calibration acknowledged', failed ? 'error' : 'success');
+    } else if (commandName !== 'ack') {
+        showToast(commandName + ' acknowledged (' + dataCode + ')', 'success');
+    }
+    ```
 - Executes specific state updates per command:
   - **`'initialize'`**: Sets `initialized: true`, `robot_mode: 'IDLE'`, resets `hasBoltingRunStartedRef.current = false`, resets bolt arrays to default uncoloured state, and deliberately avoids querying torque before Start:
     ```javascript
@@ -499,8 +542,14 @@ const sendCommand = useCallback((action, params = {}) => {
     const actionStr = String(action || '');
     const upper = actionStr.toUpperCase();
     const msg = { type: actionStr.toLowerCase() };
-    if (Object.keys(params).length) {
-        msg.data = params;
+    // params may be an object of fields, or a scalar payload
+    // (e.g. {"type": "caliberation", "data": "start"})
+    if (params !== null && params !== undefined) {
+        if (typeof params === 'object') {
+            if (Object.keys(params).length) msg.data = params;
+        } else {
+            msg.data = params;
+        }
     }
     const rawSent = JSON.stringify(msg);
 
@@ -830,6 +879,9 @@ export const BOLT_PASS_LEGEND = [
 - **Role**: Persistent bottom navigation bar for switching between views within the active task.
 - **Constants**:
   - `TABS = [{ path: '', label: 'Main' }, { path: 'vision', label: 'Vision' }, { path: 'logs', label: 'Logs' }, { path: 'calibrate', label: 'Calibrate' }, { path: 'advanced', label: 'Advanced' }]`
+  - The `Calibrate` tab here is the in-task laser/jog screen ([6.4](#64-srcpagescalibratepagejsx)).
+    The separate **Calibration** routine screen ([6.5](#65-srcpagescalibrationpagejsx)) is
+    *not* a tab - it is reached from the Home screen, since it runs before a task loads.
 - **Functions**:
   - `TabBar()`: Uses `useParams()` to read the active `/:task` segment. Renders `<NavLink>` elements with active class highlighting based on current URL.
 
@@ -993,9 +1045,16 @@ switch (e.key) {
 
 ## 6.1 `src/pages/HomePage.jsx`
 - **Path**: [`frontend-react/src/pages/HomePage.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/pages/HomePage.jsx)
-- **Role**: Landing screen displaying task cards to launch automated recipes.
+- **Role**: Landing screen displaying task cards to launch automated recipes, plus the
+  entry point to the standalone calibration routine.
+- **Constants**:
+  - `TASKS`: Robot task cards (currently `bolt` -> "Top Plate Bolting").
+  - `CALIBRATION_CARD`: Rendered **outside** `TASKS.map()`. It is not a robot task.
 - **Functions**:
   - `handleSelect(taskId)`: Invokes `selectTask(taskId)` to initiate the `load_app` + `bolt_config` sequence and navigates to `/${taskId}`.
+  - Calibration card `onClick`: Calls `navigate('/calibration')` **directly**, bypassing
+    `handleSelect()`. Routing it through `selectTask()` would fire a `load_app`, and
+    calibration is not an app.
 
 ---
 
@@ -1093,10 +1152,48 @@ const processFrame = useCallback((data) => {
   - Laser TCP: Dispatches `UPDATE_LASER_TCP`.
   - Measure: Dispatches `READ_LASER` and displays live measurement value and unit.
   - Embedded `RobotMovePad` for fine manual positioning.
+- **Not to be confused with** [6.5 `CalibrationPage.jsx`](#65-srcpagescalibrationpagejsx),
+  the standalone pre-task routine screen.
 
 ---
 
-## 6.5 `src/pages/AdvancedPage.jsx`
+## 6.5 `src/pages/CalibrationPage.jsx`
+- **Path**: [`frontend-react/src/pages/CalibrationPage.jsx`](frontend-react/src/pages/CalibrationPage.jsx)
+- **Route**: `/calibration` - **top level**, not under `/:task`.
+- **Role**: Standalone calibration routine, run from the Home screen *before* a task is
+  started. Distinct from [6.4 `CalibratePage.jsx`](#64-srcpagescalibratepagejsx), which is
+  the in-task laser/jogging screen.
+
+> **Spelling:** the wire `type` is `caliberation` (as specified by the robot side); the
+> UI label and all internal identifiers use `calibration`. The mismatch is deliberate -
+> changing one side alone breaks the protocol.
+
+- **Constants**:
+  - `ACTIONS`: Two entries, each carrying `mode`, `label`, `hint`, `variant` and an inline
+    SVG `icon`.
+- **Controls**:
+
+  | Button | Dispatches | Variant |
+  | :--- | :--- | :--- |
+  | Start Calibration | `sendCommand('CALIBERATION', 'start')` -> `{"type":"caliberation","data":"start"}` | `primary` (navy filled) |
+  | Validate Calibration | `sendCommand('CALIBERATION', 'validate')` -> `{"type":"caliberation","data":"validate"}` | `secondary` (light outlined) |
+
+- **Gating**: `disabled={!tcpConnected}` only. It deliberately does **not** check
+  `initialized` or `program_running` - this screen runs before any task is loaded, so
+  those flags are meaningless here.
+- **Layout**: Renders its own `<Header />` and `<ToastContainer />` (it is outside
+  `TaskLayout`). Card container with a header row carrying a live connection pill
+  ("Robot connected" / "Robot offline"), two 96px touch rows (72px under
+  `max-height: 800px`), and a "Back to Home" control.
+- **Feedback**: Replies are routed by the `calibration` branch of `handleMessage()`
+  (see 3.2 section C), which raises a toast carrying the server's own message, red when
+  `status` is `"error"`.
+- **Styling**: [`CalibrationPage.css`](frontend-react/src/pages/CalibrationPage.css), built
+  entirely from `tokens.css` variables.
+
+---
+
+## 6.6 `src/pages/AdvancedPage.jsx`
 - **Path**: [`frontend-react/src/pages/AdvancedPage.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/pages/AdvancedPage.jsx)
 - **Role**: Engineering diagnostics console.
 - **Functions**:
@@ -1106,7 +1203,7 @@ const processFrame = useCallback((data) => {
 
 ---
 
-## 6.6 `src/pages/LogsPage.jsx`
+## 6.7 `src/pages/LogsPage.jsx`
 - **Path**: [`frontend-react/src/pages/LogsPage.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/pages/LogsPage.jsx)
 - **Role**: Diagnostic log viewer with filtering, auto-scroll, and file export.
 - **Functions**:
@@ -1114,7 +1211,7 @@ const processFrame = useCallback((data) => {
 
 ---
 
-## 6.7 `src/pages/DataPage.jsx`
+## 6.8 `src/pages/DataPage.jsx`
 - **Path**: [`frontend-react/src/pages/DataPage.jsx`](file:///home/adi/Desktop/GUIRev2/frontend-react/src/pages/DataPage.jsx)
 - **Role**: Placeholder view for future MES/SCADA production analytics.
 
