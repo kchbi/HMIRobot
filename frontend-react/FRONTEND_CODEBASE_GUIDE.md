@@ -312,7 +312,7 @@ const scheduleReconnect = useCallback(() => {
   - `action` (`String`): The command type (e.g. `'START'`, `'INITIALIZE'`, `'MOVE_X'`).
   - `params` (`Object` | `String` | `Number`): Optional data payload. Usually an object
     (`{ value: 1.0 }`), but a **scalar** is passed straight through as `data` - this is
-    how `caliberation` sends `"start"` / `"validate"`.
+    how `calibration` sends `"start"` / `"validate"`.
 - **Code**:
 ```javascript
 const sendCommand = useCallback((action, params = {}) => {
@@ -324,7 +324,7 @@ const sendCommand = useCallback((action, params = {}) => {
 
     const msg = { type: action.toLowerCase() };
     // params may be an object of fields, or a scalar payload
-    // (e.g. {"type": "caliberation", "data": "start"})
+    // (e.g. {"type": "calibration", "data": "start"})
     if (params !== null && params !== undefined) {
         if (typeof params === 'object') {
             if (Object.keys(params).length) msg.data = params;
@@ -543,7 +543,7 @@ const sendCommand = useCallback((action, params = {}) => {
     const upper = actionStr.toUpperCase();
     const msg = { type: actionStr.toLowerCase() };
     // params may be an object of fields, or a scalar payload
-    // (e.g. {"type": "caliberation", "data": "start"})
+    // (e.g. {"type": "calibration", "data": "start"})
     if (params !== null && params !== undefined) {
         if (typeof params === 'object') {
             if (Object.keys(params).length) msg.data = params;
@@ -1164,7 +1164,7 @@ const processFrame = useCallback((data) => {
   started. Distinct from [6.4 `CalibratePage.jsx`](#64-srcpagescalibratepagejsx), which is
   the in-task laser/jogging screen.
 
-> **Spelling:** the wire `type` is `caliberation` (as specified by the robot side); the
+> **Spelling:** the wire `type` is `calibration` (as specified by the robot side); the
 > UI label and all internal identifiers use `calibration`. The mismatch is deliberate -
 > changing one side alone breaks the protocol.
 
@@ -1175,8 +1175,8 @@ const processFrame = useCallback((data) => {
 
   | Button | Dispatches | Variant |
   | :--- | :--- | :--- |
-  | Start Calibration | `sendCommand('CALIBERATION', 'start')` -> `{"type":"caliberation","data":"start"}` | `primary` (navy filled) |
-  | Validate Calibration | `sendCommand('CALIBERATION', 'validate')` -> `{"type":"caliberation","data":"validate"}` | `secondary` (light outlined) |
+  | Start Calibration | `sendCommand('CALIBRATION', 'start')` -> `{"type":"calibration","data":"start"}` | `primary` (navy filled) |
+  | Validate Calibration | `sendCommand('CALIBRATION', 'validate')` -> `{"type":"calibration","data":"validate"}` | `secondary` (light outlined) |
 
 - **Gating**: `disabled={!tcpConnected}` only. It deliberately does **not** check
   `initialized` or `program_running` - this screen runs before any task is loaded, so

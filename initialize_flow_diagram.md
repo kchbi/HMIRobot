@@ -146,7 +146,7 @@ const sendCommand = useCallback((action, params = {}) => {
     // 1. Format payload: { "type": "initialize" }
     const msg = { type: action.toLowerCase() };
     // params may be an object of fields, or a scalar payload
-    // (e.g. {"type": "caliberation", "data": "start"})
+    // (e.g. {"type": "calibration", "data": "start"})
     if (params !== null && params !== undefined) {
         if (typeof params === 'object') {
             if (Object.keys(params).length) msg.data = params;
@@ -329,8 +329,8 @@ a standalone pre-task step with its own route and its own gate.
 │      │                                                                           │
 │      ├─► "Calibration" card ──► /calibration                                     │
 │      │      • Gate: tcpConnected only (NOT initialized)                          │
-│      │      • Start Calibration     {"type":"caliberation","data":"start"}       │
-│      │      • Validate Calibration  {"type":"caliberation","data":"validate"}    │
+│      │      • Start Calibration     {"type":"calibration","data":"start"}       │
+│      │      • Validate Calibration  {"type":"calibration","data":"validate"}    │
 │      │      • No load_app — calibration is not an app                            │
 │      │                                                                           │
 │      └─► "Top Plate Bolting" card ──► selectTask('bolt') ──► /bolt               │
@@ -376,5 +376,5 @@ if (commandName === 'calibration') {
 ```
 
 > [!IMPORTANT]
-> The wire `type` is `caliberation`; the UI label and every internal identifier is
+> The wire `type` is `calibration`; the UI label and every internal identifier is
 > `calibration`. This mismatch is deliberate — do not "fix" one side alone.

@@ -207,7 +207,9 @@ class MockTCPServer:
             "GO_CALIBRATION": self._handle_go_calibration,
             "READ_LASER": self._handle_read_laser,
             "UPDATE_LASER_TCP": self._handle_update_laser_tcp,
-            "CALIBERATION": self._handle_caliberation,
+            "CALIBRATION": self._handle_calibration,
+            # Legacy clients sent the misspelled "CALIBERATION"
+            "CALIBERATION": self._handle_calibration,
             "GET_STATUS": self._handle_get_status,
             "SET_TASK": self._handle_set_task,
             "GET_PROGRESS": self._handle_get_progress,
@@ -531,8 +533,8 @@ class MockTCPServer:
         self.state.z = point["z"]
         return {"status": "ok", "message": f"Moved to calibration point {pos}"}
 
-    async def _handle_caliberation(self, params: dict) -> dict:
-        """Handles {"type": "caliberation", "data": "start" | "validate"}."""
+    async def _handle_calibration(self, params: dict) -> dict:
+        """Handles {"type": "calibration", "data": "start" | "validate"}."""
         mode = str(params.get("value", params.get("mode", ""))).lower()
 
         if mode == "start":
@@ -551,7 +553,7 @@ class MockTCPServer:
                 return {"status": "error", "message": "No calibration to validate"}
             return {"status": "ok", "message": "Calibration validated", "valid": True}
 
-        return {"status": "error", "message": f"Unknown caliberation mode: {mode!r}"}
+        return {"status": "error", "message": f"Unknown calibration mode: {mode!r}"}
 
     async def _simulate_calibration(self):
         await asyncio.sleep(3.0)

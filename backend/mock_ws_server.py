@@ -107,7 +107,7 @@ COMMAND_CONFIG: Dict[str, Dict[str, Any]] = {
         "delay": 0.05,
         "response": {"type": "cda_popup", "data": True},
     },
-    "caliberation": {
+    "calibration": {
         "delay": 3.0,
         "response": {
             "type": "command_received",
@@ -127,8 +127,8 @@ COMMAND_CONFIG: Dict[str, Dict[str, Any]] = {
 DEFAULT_FALLBACK_DELAY = 0.1
 
 
-def _caliberation_mode(data: Any) -> str:
-    """Extracts "start" / "validate" from a caliberation command payload."""
+def _calibration_mode(data: Any) -> str:
+    """Extracts "start" / "validate" from a calibration command payload."""
     if isinstance(data, str):
         return data.strip().lower()
     if isinstance(data, dict):
@@ -432,6 +432,9 @@ class MockWebSocketServer:
                     continue
 
                 cmd_type = str(message.get("type", "")).strip().lower()
+                # Legacy clients sent the misspelled "caliberation"
+                if cmd_type == "caliberation":
+                    cmd_type = "calibration"
                 data = message.get("data", {})
 
                 # Fast-path relay for camera frames (e.g. from camera producer scripts or ROS bridge)
@@ -592,7 +595,7 @@ class MockWebSocketServer:
         elif cmd_type == "read_laser":
             self.robot.laser_value = round(random.uniform(40.0, 50.0), 2)
 
-        elif cmd_type == "caliberation" and _caliberation_mode(data) == "start":
+        elif cmd_type == "calibration" and _calibration_mode(data) == "start":
             self.robot.calibration_running = True
             self.robot.calibration_valid = False
             self.robot.current_command = "CALIBRATING"
@@ -609,7 +612,7 @@ class MockWebSocketServer:
             self.robot.current_command = "READY"
             self.robot._reset_bolts()
 
-        elif cmd_type == "caliberation" and _caliberation_mode(data) == "start":
+        elif cmd_type == "calibration" and _calibration_mode(data) == "start":
             self.robot.calibration_running = False
             self.robot.calibration_valid = True
             self.robot.current_command = "NO COMMAND"
@@ -636,8 +639,8 @@ class MockWebSocketServer:
             elif cmd_type == "read_laser":
                 response["data"]["value"] = self.robot.laser_value
                 response["data"]["message"] = f"Laser reading: {self.robot.laser_value} mm"
-            elif cmd_type == "caliberation":
-                mode = _caliberation_mode(data)
+            elif cmd_type == "calibration":
+                mode = _calibration_mode(data)
                 if mode == "validate":
                     valid = self.robot.calibration_valid
                     response["data"]["status"] = "ok" if valid else "error"
@@ -649,7 +652,7 @@ class MockWebSocketServer:
                     response["data"]["message"] = "Calibration routine complete"
                 else:
                     response["data"]["status"] = "error"
-                    response["data"]["message"] = f"Unknown caliberation mode: {mode!r}"
+                    response["data"]["message"] = f"Unknown calibration mode: {mode!r}"
 
         return response
 

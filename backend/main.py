@@ -230,7 +230,7 @@ async def websocket_endpoint(ws: WebSocket):
 
             action = message.get("type", "").upper()  # normalize to uppercase internally
             params = message.get("data", {})
-            # A scalar payload (e.g. {"type": "caliberation", "data": "start"})
+            # A scalar payload (e.g. {"type": "calibration", "data": "start"})
             # is normalized so it can still be forwarded as keyword arguments.
             if not isinstance(params, dict):
                 params = {"value": params}

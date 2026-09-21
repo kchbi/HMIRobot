@@ -4,7 +4,7 @@ import Header from '../components/Header';
 import ToastContainer from '../components/ToastContainer';
 import './CalibrationPage.css';
 
-// Both buttons send {"type": "caliberation", "data": <mode>}
+// Both buttons send {"type": "calibration", "data": <mode>}
 const ACTIONS = [
     {
         mode: 'start',
@@ -66,7 +66,7 @@ export default function CalibrationPage() {
                                 key={btn.mode}
                                 className={`calibration-action ${btn.variant}`}
                                 disabled={!tcpConnected}
-                                onClick={() => sendCommand('CALIBERATION', btn.mode)}
+                                onClick={() => sendCommand('CALIBRATION', btn.mode)}
                             >
                                 <span className="action-icon">{btn.icon}</span>
                                 <span className="action-text">

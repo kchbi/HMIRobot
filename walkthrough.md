@@ -115,7 +115,7 @@ Built: `dist/assets/index-lXFL7Mjz.js` (replaces old `index-CGJNzQjT.js`)
 Home screen — it is something you run *before* starting a task, so it no longer
 lives inside a task's tab bar.
 
-> **Note on spelling:** the wire protocol uses `caliberation` (as specified by the
+> **Note on spelling:** the wire protocol uses `calibration` (as specified by the
 > robot side). The UI label and all internal identifiers use `calibration`. This
 > mismatch is deliberate — do not "fix" one without the other.
 
@@ -127,8 +127,8 @@ The whole page. Two actions, nothing else.
 
 | Element | Sends |
 |:---|:---|
-| **Start Calibration** | `{"type": "caliberation", "data": "start"}` |
-| **Validate Calibration** | `{"type": "caliberation", "data": "validate"}` |
+| **Start Calibration** | `{"type": "calibration", "data": "start"}` |
+| **Validate Calibration** | `{"type": "calibration", "data": "validate"}` |
 
 Because it is a pre-task step, it does **not** depend on `initialized` or on a
 loaded app. The only gate is `tcpConnected` — both buttons disable and a status
@@ -184,7 +184,7 @@ Added `CALIBRATION_CARD`. It is rendered outside the `TASKS.map()` and calls
 |:---|:---|
 | `if (Object.keys(params).length) msg.data = params;` | scalar payloads pass through unchanged |
 
-So `sendCommand('CALIBERATION', 'start')` emits `"data": "start"`, not
+So `sendCommand('CALIBRATION', 'start')` emits `"data": "start"`, not
 `"data": {...}`.
 
 `AppContext` also gained a `calibration` branch in `command_received`. Without it
@@ -196,24 +196,24 @@ The toast now carries the server's own message and turns red on `status: "error"
 **Why:** `tcp_client.send_command(action, **params)` throws on a string payload.
 
 A non-dict `data` is normalized to `{"value": data}` before forwarding, so
-`caliberation` reaches the robot as `send_command("CALIBERATION", value="start")`.
+`calibration` reaches the robot as `send_command("CALIBRATION", value="start")`.
 
 ## Files 9–10: [`command_protocol.py`](backend/command_protocol.py), [`mock_tcp_server.py`](backend/mock_tcp_server.py), [`mock_ws_server.py`](backend/mock_ws_server.py)
 
-`CALIBERATION` constant plus handlers in both mocks:
+`CALIBRATION` constant plus handlers in both mocks:
 
 | `data` | Behaviour |
 |:---|:---|
 | `"start"` | Runs a 3s simulated routine, then marks the calibration valid |
 | `"validate"` | `ok` only if a routine has completed, else `error` |
-| anything else | `error: Unknown caliberation mode` |
+| anything else | `error: Unknown calibration mode` |
 
 ---
 
 ## Protocol Flow
 
 ```
-Browser sends:     {"type":"caliberation","data":"start"}
+Browser sends:     {"type":"calibration","data":"start"}
 Backend responds:  {"type":"command_received","data":{"status":"ok","message":"Calibration routine complete"}}
                                                                 ↑
                                             message contains "calibrat" → commandName "calibration"
@@ -226,9 +226,9 @@ Against `mock_ws_server.py`, sending exactly what the buttons emit:
 
 | Sent | Received |
 |:---|:---|
-| `{"type":"caliberation","data":"validate"}` | `{"status":"error","message":"No calibration to validate","valid":false}` |
-| `{"type":"caliberation","data":"start"}` | `{"status":"ok","message":"Calibration routine complete"}` |
-| `{"type":"caliberation","data":"validate"}` | `{"status":"ok","message":"Calibration validated","valid":true}` |
+| `{"type":"calibration","data":"validate"}` | `{"status":"error","message":"No calibration to validate","valid":false}` |
+| `{"type":"calibration","data":"start"}` | `{"status":"ok","message":"Calibration routine complete"}` |
+| `{"type":"calibration","data":"validate"}` | `{"status":"ok","message":"Calibration validated","valid":true}` |
 
 Plus a server-side render of the app (17 assertions) confirming the Home card,
 the page's buttons and offline state, and that the Calibration tab is gone from

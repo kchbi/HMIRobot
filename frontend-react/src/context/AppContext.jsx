@@ -456,7 +456,7 @@ export function AppProvider({ children }) {
         const upper = actionStr.toUpperCase();
         const msg = { type: actionStr.toLowerCase() };
         // params may be an object of fields, or a scalar payload
-        // (e.g. {"type": "caliberation", "data": "start"})
+        // (e.g. {"type": "calibration", "data": "start"})
         if (params !== null && params !== undefined) {
             if (typeof params === 'object') {
                 if (Object.keys(params).length) msg.data = params;
