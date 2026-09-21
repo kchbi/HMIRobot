@@ -42,7 +42,9 @@ export function AppProvider({ children }) {
     const cameraListenersRef = useRef(new Set());
     const latestCameraFrameRef = useRef(null);
     const [isBoltingPolling, setIsBoltingPolling] = useState(false);
-    const hasRunStartedRef = useRef(false);
+    const hasBoltingRunStartedRef = useRef(false);
+    const isRunActiveRef = useRef(false);
+    const postRunTimerRef = useRef(null);
     const pendingBoltTorqueResolverRef = useRef(null);
 
     const onCameraFrame = useCallback((callback) => {
@@ -87,9 +89,15 @@ export function AppProvider({ children }) {
                     const isPowerOff = robotMode === 'POWER_OFF' || robotMode === 'NO_CONTROLLER' || robotMode === 'DISCONNECTED' || incoming.connected === false;
                     const initialized = isPowerOff ? false : (prev.initialized || incoming.initialized || false);
 
-                    // Preserve existing bolt colors when update_state arrives (unless initializing or power off)
+                    // Preserve existing bolt colors when update_state arrives (only if Start has been clicked in this cycle)
                     let mergedBolts = {};
-                    if (robotMode !== 'INITIALIZING' && robotMode !== 'POWER_OFF' && robotMode !== 'NO_CONTROLLER' && robotMode !== 'DISCONNECTED') {
+                    if (
+                        hasBoltingRunStartedRef.current &&
+                        robotMode !== 'INITIALIZING' &&
+                        robotMode !== 'POWER_OFF' &&
+                        robotMode !== 'NO_CONTROLLER' &&
+                        robotMode !== 'DISCONNECTED'
+                    ) {
                         mergedBolts = { ...(prev.bolt_positions || {}) };
                         if (incoming.bolt_positions) {
                             Object.entries(incoming.bolt_positions).forEach(([id, b]) => {
@@ -162,6 +170,7 @@ export function AppProvider({ children }) {
                 // Update robotStatus based on which command was acknowledged
                 switch (commandName) {
                     case 'initialize':
+                        hasBoltingRunStartedRef.current = false;
                         setRobotStatus(prev => ({
                             ...prev,
                             initialized: true,
@@ -172,9 +181,6 @@ export function AppProvider({ children }) {
                             bolt_positions: {},
                             bolt_torque_colors: [],
                         }));
-                        // Fetch current bolt status from robot so UI knows tightened state before Start
-                        console.log('[WS] Initialized acknowledged: requesting current bolt status/torque');
-                        sendCommandRef.current?.('GET_BOLT_TORQUE');
                         break;
                     case 'release_brakes':
                         setRobotStatus(prev => ({ ...prev, brakes_released: true }));
@@ -183,6 +189,7 @@ export function AppProvider({ children }) {
                         setRobotStatus(prev => ({ ...prev, robot_on: true, robot_mode: 'IDLE' }));
                         break;
                     case 'turn_robot_off':
+                        hasBoltingRunStartedRef.current = false;
                         setRobotStatus(prev => ({
                             ...prev,
                             robot_on: false,
@@ -192,24 +199,29 @@ export function AppProvider({ children }) {
                             active_bolt: null,
                             process_progress: 0,
                             bolt_positions: {},
+                            bolt_torque_colors: [],
                         }));
                         break;
                     case 'start':
+                        hasBoltingRunStartedRef.current = true;
                         setRobotStatus(prev => ({ ...prev, program_running: true }));
                         break;
                     case 'pause':
                         setRobotStatus(prev => ({ ...prev, program_running: false }));
                         break;
                     case 'abort':
+                        hasBoltingRunStartedRef.current = false;
                         setRobotStatus(prev => ({
                             ...prev,
                             program_running: false,
                             active_bolt: null,
                             process_progress: 0,
                             bolt_positions: {},
+                            bolt_torque_colors: [],
                         }));
                         break;
                     case 'stow':
+                        hasBoltingRunStartedRef.current = false;
                         setRobotStatus(prev => ({
                             ...prev,
                             initialized: false,
@@ -218,9 +230,11 @@ export function AppProvider({ children }) {
                             active_bolt: null,
                             process_progress: 0,
                             bolt_positions: {},
+                            bolt_torque_colors: [],
                         }));
                         break;
                     case 'disconnect':
+                        hasBoltingRunStartedRef.current = false;
                         setTcpConnected(false);
                         setRobotStatus(prev => ({
                             ...prev,
@@ -230,6 +244,7 @@ export function AppProvider({ children }) {
                             active_bolt: null,
                             process_progress: 0,
                             bolt_positions: {},
+                            bolt_torque_colors: [],
                         }));
                         break;
                     default:
@@ -340,6 +355,28 @@ export function AppProvider({ children }) {
                     resolver(rawColors);
                 }
 
+                // Only color the bolt plate AFTER the Start button has been clicked for the current cycle
+                if (!hasBoltingRunStartedRef.current) {
+                    console.log('[WS] Ignoring get_bolt_torque coloring: bolting run has not been started yet.');
+                    setRobotStatus((prev) => {
+                        if (prev.program_running) {
+                            // If program is running, treat as started
+                            hasBoltingRunStartedRef.current = true;
+                        } else {
+                            return {
+                                ...prev,
+                                bolt_positions: {},
+                                bolt_torque_colors: [],
+                                active_bolt: null,
+                            };
+                        }
+                        return prev;
+                    });
+                    if (!hasBoltingRunStartedRef.current) {
+                        break;
+                    }
+                }
+
                 setRobotStatus((prev) => {
                     const existingBolts = { ...(prev.bolt_positions || {}) };
                     if (Array.isArray(rawColors)) {
@@ -420,15 +457,30 @@ export function AppProvider({ children }) {
 
         // Control get_bolt_torque polling state based on action
         if (upper === 'START') {
+            if (postRunTimerRef.current) {
+                clearTimeout(postRunTimerRef.current);
+                postRunTimerRef.current = null;
+            }
+            hasBoltingRunStartedRef.current = true;
             setIsBoltingPolling(true);
-            hasRunStartedRef.current = false;
         } else if (['STOW', 'ABORT', 'PAUSE', 'INITIALIZE', 'TURN_ROBOT_OFF', 'DISCONNECT'].includes(upper)) {
+            if (postRunTimerRef.current) {
+                clearTimeout(postRunTimerRef.current);
+                postRunTimerRef.current = null;
+            }
             setIsBoltingPolling(false);
-            hasRunStartedRef.current = false;
+            if (['STOW', 'ABORT', 'INITIALIZE', 'TURN_ROBOT_OFF', 'DISCONNECT'].includes(upper)) {
+                hasBoltingRunStartedRef.current = false;
+            }
         }
 
         // Immediately reset visualizer and state on Initialize or Stow click
         if (upper === 'INITIALIZE' || upper === 'STOW') {
+            if (postRunTimerRef.current) {
+                clearTimeout(postRunTimerRef.current);
+                postRunTimerRef.current = null;
+            }
+            hasBoltingRunStartedRef.current = false;
             setRobotStatus((prev) => ({
                 ...prev,
                 initialized: false,
@@ -458,20 +510,33 @@ export function AppProvider({ children }) {
     }, [rawSendCommand]);
     sendCommandRef.current = sendCommand;
 
-    // Automatic start & stop of 0.5s get_bolt_torque polling based on program_running state
+    // Automatic start & stop of 0.5s get_bolt_torque polling with a 6-second post-run window
     useEffect(() => {
         if (robotStatus.program_running) {
-            hasRunStartedRef.current = true;
+            isRunActiveRef.current = true;
+            hasBoltingRunStartedRef.current = true;
+            if (postRunTimerRef.current) {
+                clearTimeout(postRunTimerRef.current);
+                postRunTimerRef.current = null;
+            }
             setIsBoltingPolling(true);
-        } else if (hasRunStartedRef.current && !robotStatus.program_running) {
-            // Bolting process finished
-            console.log('[WS] Robot bolting sequence finished. Stopping get_bolt_torque polling.');
-            setIsBoltingPolling(false);
-            hasRunStartedRef.current = false;
-            // Fetch final status immediately and with follow-up delays to ensure bolt 24 is written by controller
-            sendCommandRef.current?.('GET_BOLT_TORQUE');
-            setTimeout(() => sendCommandRef.current?.('GET_BOLT_TORQUE'), 300);
-            setTimeout(() => sendCommandRef.current?.('GET_BOLT_TORQUE'), 800);
+        } else if (isRunActiveRef.current && !robotStatus.program_running) {
+            // Bolting process finished — robot arm stopped moving
+            console.log('[WS] Robot bolting sequence finished. Starting 6-second post-run polling window for bolt 24...');
+            isRunActiveRef.current = false;
+
+            // Clear any existing post-run timer
+            if (postRunTimerRef.current) {
+                clearTimeout(postRunTimerRef.current);
+            }
+
+            // Keep isBoltingPolling active for 6 seconds so the 0.5s polling loop continues,
+            // giving the controller/screwdriver driver time to write the final 24th bolt color.
+            postRunTimerRef.current = setTimeout(() => {
+                console.log('[WS] 6-second post-run polling window ended. Stopping get_bolt_torque polling.');
+                setIsBoltingPolling(false);
+                postRunTimerRef.current = null;
+            }, 6000);
         }
     }, [robotStatus.program_running]);
 
@@ -545,6 +610,14 @@ export function AppProvider({ children }) {
 
     const selectTask = useCallback((task, customBoltConfig = null) => {
         setCurrentTask(task);
+        hasBoltingRunStartedRef.current = false;
+        setRobotStatus((prev) => ({
+            ...prev,
+            bolt_positions: {},
+            bolt_torque_colors: [],
+            active_bolt: null,
+            process_progress: 0,
+        }));
         if (task === 'bolt') {
             const config = customBoltConfig || { boltNum: 24, torqueNum: 3 };
             pendingBoltConfigRef.current = config;
